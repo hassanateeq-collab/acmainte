@@ -96,6 +96,30 @@ export async function createAssetAction(
       description: `Registered at ${home_branch}${room ? `, room ${room}` : " (store)"}`,
       actor_name: actorName(profile),
     });
+
+    // Auto-pair with an unpaired opposite part already in the same room.
+    if (part && room) {
+      const opposite = part === "I" ? "E" : "I";
+      const { data: mate } = await supabaseAdmin()
+        .from("assets")
+        .select("id")
+        .eq("current_branch", home_branch)
+        .eq("room", room)
+        .eq("part", opposite)
+        .is("paired_with", null)
+        .neq("id", id)
+        .limit(1)
+        .maybeSingle();
+      if (mate?.id) {
+        await supabaseAdmin().from("assets").update({ paired_with: mate.id }).eq("id", id);
+        await supabaseAdmin().from("assets").update({ paired_with: id }).eq("id", mate.id);
+        await supabaseAdmin().from("asset_events").insert([
+          { asset_id: id, kind: "pairing", description: `Connected to ${mate.id} (room ${room})`, actor_name: actorName(profile) },
+          { asset_id: mate.id, kind: "pairing", description: `Connected to ${id} (room ${room})`, actor_name: actorName(profile) },
+        ]);
+      }
+    }
+
     await notify(
       branchInbox(home_branch),
       `New asset ${id} registered at ${home_branch}`,
