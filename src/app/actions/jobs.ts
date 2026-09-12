@@ -148,8 +148,8 @@ export async function editJobAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "admin" || profile.role === "repair"))
-    return { error: "Only Admin or CoolTech can edit a job." };
+  if (profile.role === "repair")
+    return { error: "CoolTech can add charges but not change them — ask the branch manager or Admin." };
 
   const jobId = String(formData.get("job_id") || "");
   const reason = String(formData.get("reason") || "").trim();
@@ -159,6 +159,13 @@ export async function editJobAction(
   const { data: existing } = await admin.from("jobs").select("*").eq("id", jobId).maybeSingle();
   if (!existing) return { error: "Job not found." };
   const job = existing as Job;
+
+  const jobAsset = await getAsset(job.asset_id);
+  if (
+    profile.role === "branch_manager" &&
+    (!jobAsset || jobAsset.current_branch !== profile.branch_code)
+  )
+    return { error: "You can only change charges for assets at your branch." };
 
   const next = {
     date: String(formData.get("date") || job.date) || job.date,
@@ -185,8 +192,7 @@ export async function editJobAction(
     edited_by_name: actorName(profile),
   });
 
-  const asset = await getAsset(job.asset_id);
-  await notify(branchInbox(asset?.current_branch), `Bill edited on ${job.asset_id}: ${changes.join(", ") || "details"} (${reason})`, {
+  await notify(branchInbox(jobAsset?.current_branch), `Bill edited on ${job.asset_id}: ${changes.join(", ") || "details"} (${reason})`, {
     kind: "bill_edited",
     asset_id: job.asset_id,
   });
@@ -199,8 +205,8 @@ export async function deleteJobAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "admin" || profile.role === "repair"))
-    return { error: "Only Admin or CoolTech can delete a job." };
+  if (profile.role === "repair")
+    return { error: "CoolTech cannot delete bills — ask the branch manager or Admin." };
 
   const jobId = String(formData.get("job_id") || "");
   const reason = String(formData.get("reason") || "").trim();
@@ -211,6 +217,13 @@ export async function deleteJobAction(
   if (!existing) return { error: "Job not found." };
   const job = existing as Job;
 
+  const jobAsset = await getAsset(job.asset_id);
+  if (
+    profile.role === "branch_manager" &&
+    (!jobAsset || jobAsset.current_branch !== profile.branch_code)
+  )
+    return { error: "You can only change charges for assets at your branch." };
+
   await admin.from("jobs").update({ deleted: true }).eq("id", jobId);
   await admin.from("job_edits").insert({
     job_id: jobId,
@@ -218,8 +231,7 @@ export async function deleteJobAction(
     reason,
     edited_by_name: actorName(profile),
   });
-  const asset = await getAsset(job.asset_id);
-  await notify(branchInbox(asset?.current_branch), `Bill deleted on ${job.asset_id}: ${job.type} ${rs(Number(job.bill_amount))} (${reason})`, {
+  await notify(branchInbox(jobAsset?.current_branch), `Bill deleted on ${job.asset_id}: ${job.type} ${rs(Number(job.bill_amount))} (${reason})`, {
     kind: "bill_deleted",
     asset_id: job.asset_id,
   });

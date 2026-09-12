@@ -28,6 +28,7 @@ export function navFor(role: Role): NavItem[] {
     { href: "/notifications", label: "Notifications", badgeKey: "notifications" },
   ];
   if (role === "admin") {
+    items.push({ href: "/audit", label: "Audit trail" });
     items.push({ href: "/users", label: "People" });
   }
   return items;

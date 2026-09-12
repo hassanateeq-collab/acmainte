@@ -10,6 +10,7 @@ export function revalidateAll() {
     "/service",
     "/issues",
     "/bills",
+    "/audit",
     "/notifications",
     "/users",
   ]) {

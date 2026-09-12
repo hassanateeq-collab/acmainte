@@ -25,7 +25,13 @@ export default async function BillsPage() {
     0
   );
   const grand = totalBill + totalAdd;
-  const canEdit = profile.role === "admin" || profile.role === "repair";
+  // Vendor (CoolTech) adds charges; branch manager changes them; admin does both.
+  const canAdd = profile.role === "admin" || profile.role === "repair";
+  const canEditRow = (assetId: string) =>
+    profile.role === "admin" ||
+    (profile.role === "branch_manager" &&
+      branchOf.get(assetId) === profile.branch_code);
+  const showActions = profile.role !== "repair" || canAdd; // all roles have some action
 
   const chargeAssets = assets.map((a) => ({ id: a.id, branch: a.current_branch }));
 
@@ -41,7 +47,7 @@ export default async function BillsPage() {
       <PageHeader
         title="Bills"
         subtitle="Every service, repair and charge with its amount. Money records keep a change log."
-        actions={canEdit ? <StandaloneCharge assets={chargeAssets} /> : undefined}
+        actions={canAdd ? <StandaloneCharge assets={chargeAssets} /> : undefined}
       />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
@@ -59,12 +65,12 @@ export default async function BillsPage() {
             <tr>
               <th>Date</th><th>Asset</th><th>Type</th><th>Problem / work</th>
               <th>Bill</th><th>Additional</th><th>Total</th><th>Days</th><th>By</th>
-              {canEdit && <th>Actions</th>}
+              {showActions && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {scoped.length === 0 && (
-              <tr><td colSpan={canEdit ? 10 : 9} style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>No bill entries yet.</td></tr>
+              <tr><td colSpan={showActions ? 10 : 9} style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>No bill entries yet.</td></tr>
             )}
             {scoped.map((j) => {
               const charges = j.job_charges ?? [];
@@ -99,7 +105,7 @@ export default async function BillsPage() {
                   <td style={{ fontWeight: 700 }}>{money(jobTotal(j))}</td>
                   <td>{j.days_taken || 0}</td>
                   <td style={{ fontSize: 13 }}>{j.created_by_name ?? "—"}</td>
-                  {canEdit && (
+                  {showActions && (
                     <td>
                       <BillActions
                         job={{
@@ -111,7 +117,8 @@ export default async function BillsPage() {
                           bill_amount: Number(j.bill_amount),
                           days_taken: j.days_taken,
                         }}
-                        canEdit={canEdit}
+                        canAdd={canAdd}
+                        canEdit={canEditRow(j.asset_id)}
                       />
                     </td>
                   )}

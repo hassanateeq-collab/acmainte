@@ -131,6 +131,20 @@ export async function unreadCount(audiences: string[]): Promise<number> {
   return count ?? 0;
 }
 
+export type JobEditRow = JobEdit & {
+  jobs: { asset_id: string; type: string } | null;
+};
+
+/** Full money change log (edits + deletes) for the Admin audit trail. */
+export async function listJobEdits(): Promise<JobEditRow[]> {
+  const { data } = await supabaseAdmin()
+    .from("job_edits")
+    .select("*, jobs(asset_id, type)")
+    .order("created_at", { ascending: false })
+    .limit(500);
+  return (data as JobEditRow[]) ?? [];
+}
+
 export async function listProfiles(): Promise<Profile[]> {
   const { data } = await supabaseAdmin()
     .from("profiles")

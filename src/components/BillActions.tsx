@@ -16,12 +16,22 @@ type JobLite = {
   days_taken: number;
 };
 
-export default function BillActions({ job, canEdit }: { job: JobLite; canEdit: boolean }) {
+export default function BillActions({
+  job,
+  canAdd,
+  canEdit,
+}: {
+  job: JobLite;
+  canAdd: boolean;
+  canEdit: boolean;
+}) {
   return (
     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-      <Modal triggerLabel="Add charge" triggerClassName="btn btn-sm" title="Add a charge to this job" subtitle="Transport, gas top-up, etc. — added to this job's Additional column.">
-        {(close) => <AddChargeToJob jobId={job.id} close={close} />}
-      </Modal>
+      {canAdd && (
+        <Modal triggerLabel="Add charge" triggerClassName="btn btn-sm" title="Add a charge to this job" subtitle="Transport, gas top-up, etc. — added to this job's Additional column.">
+          {(close) => <AddChargeToJob jobId={job.id} close={close} />}
+        </Modal>
+      )}
       {canEdit && (
         <>
           <Modal triggerLabel="Edit" triggerClassName="btn btn-sm" title="Edit bill entry" subtitle="A reason is required and kept in the change log.">
