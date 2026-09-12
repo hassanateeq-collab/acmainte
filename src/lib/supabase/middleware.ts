@@ -1,7 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-/** Refreshes the Supabase auth session cookie on every request. */
+/**
+ * Refreshes the Supabase auth session cookie on every request and gates
+ * protected routes. IMPORTANT: any redirect we return must carry over the
+ * cookies Supabase refreshed on `response`, otherwise the rotated session
+ * cookie is dropped and the app ping-pongs between "/" and "/login"
+ * (ERR_TOO_MANY_REDIRECTS).
+ */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -39,16 +45,16 @@ export async function updateSession(request: NextRequest) {
     path.startsWith("/favicon") ||
     path.startsWith("/api/health");
 
+  // Redirect unauthenticated users to /login, carrying the refreshed cookies.
+  // (We deliberately do NOT redirect authenticated users away from /login here
+  //  — that back-and-forth, combined with any edge case, is a loop risk. The
+  //  login page sends them onward after a successful sign-in instead.)
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && path === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
   }
 
   return response;
