@@ -3,10 +3,9 @@ import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
- * Temporary diagnostic endpoint. Reports whether env vars are present, the
- * ROLE encoded in each key (to catch anon/service-role mix-ups), whether a
- * session cookie is readable, and whether the signed-in user has a profile.
- * Never returns secret values. Remove this route once things are working.
+ * Temporary diagnostic endpoint. Reports env presence + key roles, raw
+ * connectivity from the server to Supabase, session status, and profile
+ * lookup. Never returns secret values. Remove once things work.
  */
 function roleOf(jwt?: string): string | null {
   try {
@@ -21,46 +20,67 @@ function roleOf(jwt?: string): string | null {
 }
 
 export async function GET() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
   const out: Record<string, unknown> = {};
 
   out.env = {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL ?? null,
+    NEXT_PUBLIC_SUPABASE_URL: url || null,
     hasAnon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-    anonKeyRole: roleOf(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY), // expect "anon"
-    serviceKeyRole: roleOf(process.env.SUPABASE_SERVICE_ROLE_KEY), // expect "service_role"
+    hasServiceRole: !!service,
+    anonKeyRole: roleOf(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    serviceKeyRole: roleOf(service),
   };
 
+  // 1) Raw connectivity: can the SERVER reach Supabase auth at all?
   try {
-    const supabase = await createSupabaseServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    out.session = user ? { id: user.id, email: user.email } : null;
+    const r = await fetch(`${url}/auth/v1/health`, {
+      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+    });
+    out.authHealth = { status: r.status, body: (await r.text()).slice(0, 200) };
   } catch (e) {
-    out.sessionError = String(e instanceof Error ? e.message : e);
+    out.authHealthError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
   }
 
+  // 2) Raw REST call with the service key: is the key accepted + table present?
+  try {
+    const r = await fetch(`${url}/rest/v1/profiles?select=id&limit=1`, {
+      headers: {
+        apikey: service,
+        Authorization: `Bearer ${service}`,
+      },
+    });
+    out.restProfiles = { status: r.status, body: (await r.text()).slice(0, 300) };
+  } catch (e) {
+    out.restProfilesError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
+  }
+
+  // 3) Session via the SSR server client.
+  try {
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase.auth.getUser();
+    out.session = data.user ? { id: data.user.id, email: data.user.email } : null;
+    if (error) out.getUserError = `${error.name}: ${error.message}`;
+  } catch (e) {
+    out.sessionError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
+  }
+
+  // 4) Profiles via the admin client.
   try {
     const admin = supabaseAdmin();
     const { count, error } = await admin
       .from("profiles")
       .select("id", { count: "exact", head: true });
     out.profilesTableCount = count;
-    if (error) out.profilesTableError = error.message;
-
-    const session = out.session as { id: string } | null;
-    if (session) {
-      const { data, error: pe } = await admin
-        .from("profiles")
-        .select("*")
-        .eq("id", session.id)
-        .maybeSingle();
-      out.myProfile = data ?? null;
-      if (pe) out.myProfileError = pe.message;
-    }
+    if (error)
+      out.profilesTableError = JSON.stringify({
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
   } catch (e) {
-    out.adminError = String(e instanceof Error ? e.message : e);
+    out.adminError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
   }
 
   return NextResponse.json(out, { status: 200 });
