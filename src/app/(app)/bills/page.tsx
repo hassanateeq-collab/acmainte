@@ -5,6 +5,7 @@ import { money, fmtDate } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import BillActions from "@/components/BillActions";
 import StandaloneCharge from "@/components/StandaloneCharge";
+import PrintButton from "@/components/PrintButton";
 import { Tag } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
@@ -25,13 +26,11 @@ export default async function BillsPage() {
     0
   );
   const grand = totalBill + totalAdd;
-  // Vendor (CoolTech) adds charges; branch manager changes them; admin does both.
+  // CoolTech (repair) adds and edits charges; Admin does everything + audit.
+  // Branch managers view only.
   const canAdd = profile.role === "admin" || profile.role === "repair";
-  const canEditRow = (assetId: string) =>
-    profile.role === "admin" ||
-    (profile.role === "branch_manager" &&
-      branchOf.get(assetId) === profile.branch_code);
-  const showActions = profile.role !== "repair" || canAdd; // all roles have some action
+  const canEdit = profile.role === "admin" || profile.role === "repair";
+  const showActions = canAdd || canEdit;
 
   const chargeAssets = assets.map((a) => ({ id: a.id, branch: a.current_branch }));
 
@@ -47,8 +46,22 @@ export default async function BillsPage() {
       <PageHeader
         title="Bills"
         subtitle="Every service, repair and charge with its amount. Money records keep a change log."
-        actions={canAdd ? <StandaloneCharge assets={chargeAssets} /> : undefined}
+        actions={
+          <div className="no-print" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <PrintButton />
+            {canAdd && <StandaloneCharge assets={chargeAssets} />}
+          </div>
+        }
       />
+
+      {/* Shown only when printing / saving as PDF */}
+      <div className="print-only" style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Hamsun Assets — Bills</div>
+        <div style={{ fontSize: 12, color: "#555" }}>
+          {profile.role === "branch_manager" ? `Branch ${profile.branch_code}` : "All branches"} ·
+          Generated {new Date().toLocaleString("en-GB")}
+        </div>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
         {tiles.map((t, i) => (
@@ -65,7 +78,7 @@ export default async function BillsPage() {
             <tr>
               <th>Date</th><th>Asset</th><th>Type</th><th>Problem / work</th>
               <th>Bill</th><th>Additional</th><th>Total</th><th>Days</th><th>By</th>
-              {showActions && <th>Actions</th>}
+              {showActions && <th className="no-print">Actions</th>}
             </tr>
           </thead>
           <tbody>
@@ -106,7 +119,7 @@ export default async function BillsPage() {
                   <td>{j.days_taken || 0}</td>
                   <td style={{ fontSize: 13 }}>{j.created_by_name ?? "—"}</td>
                   {showActions && (
-                    <td>
+                    <td className="no-print">
                       <BillActions
                         job={{
                           id: j.id,
@@ -118,7 +131,7 @@ export default async function BillsPage() {
                           days_taken: j.days_taken,
                         }}
                         canAdd={canAdd}
-                        canEdit={canEditRow(j.asset_id)}
+                        canEdit={canEdit}
                       />
                     </td>
                   )}

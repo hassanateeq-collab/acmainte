@@ -137,3 +137,37 @@ table.data tr:last-child td {
 table.data tbody tr:hover {
   background: #fafbfc;
 }
+
+/* Print / PDF ------------------------------------------------------------- */
+.print-only {
+  display: none;
+}
+@media print {
+  aside.sidebar,
+  .topbar-mobile,
+  .no-print {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  body {
+    background: #fff !important;
+  }
+  .card {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  table.data th,
+  table.data td {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+}
