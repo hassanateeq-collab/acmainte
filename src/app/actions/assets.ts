@@ -371,6 +371,59 @@ export async function updateAssetAction(
   return { ok: true };
 }
 
+/** Mark / unmark an asset as a spare so other branches can request it.
+ *  Admin or the owning branch manager. */
+export async function setSpareAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  if (profile.role === "repair")
+    return { error: "The repair company cannot change spare labels." };
+
+  const assetId = String(formData.get("asset_id") || "");
+  const spare = String(formData.get("spare") || "") === "1";
+
+  const admin = supabaseAdmin();
+  const { data: asset } = await admin
+    .from("assets")
+    .select("*")
+    .eq("id", assetId)
+    .maybeSingle();
+  if (!asset) return { error: "Asset not found." };
+  const a = asset as Asset;
+
+  const canEdit =
+    profile.role === "admin" ||
+    (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
+  if (!canEdit)
+    return { error: "Only Admin or the owning branch manager can label this asset." };
+
+  const { error } = await admin
+    .from("assets")
+    .update({ is_spare: spare })
+    .eq("id", assetId);
+  if (error) return { error: error.message };
+
+  await admin.from("asset_events").insert({
+    asset_id: assetId,
+    kind: "note",
+    description: spare
+      ? "Labelled as spare — available for other branches to request"
+      : "Spare label removed",
+    actor_name: actorName(profile),
+  });
+  if (spare) {
+    await notify(
+      [],
+      `${assetId} marked spare at ${a.current_branch} — available to move`,
+      { kind: "spare_marked", asset_id: assetId }
+    );
+  }
+  revalidateAll();
+  return { ok: true };
+}
+
 /** Permanently delete an asset and its history. Admin or owning branch manager. */
 export async function deleteAssetAction(
   _prev: ActionState,

@@ -52,6 +52,14 @@ function Inner({
       <FormError state={state} />
       <input type="hidden" name="asset_id" value={assetId} />
       <input type="hidden" name="to_branch" value={toBranch} />
+      <label className="label">Install in which room?</label>
+      <input
+        name="to_room"
+        className="input"
+        placeholder="e.g. 210"
+        required
+        style={{ marginBottom: 12 }}
+      />
       <label className="label">Why do you need it?</label>
       <textarea
         name="reason"

@@ -95,6 +95,9 @@ export default async function AssetRecordPage({
         <Alert tone="red" text={`Open issue: ${asset.open_issue}`} />
       )}
       {asset.at_vendor && <Alert tone="violet" text="This unit is with CoolTech." />}
+      {asset.is_spare && !asset.at_vendor && (
+        <Alert tone="amber" text="Labelled as spare — available for other branches to request on the Move page." />
+      )}
 
       {/* Action bar */}
       <div className="card" style={{ padding: 14, marginBottom: 16 }}>
@@ -190,8 +193,13 @@ export default async function AssetRecordPage({
   );
 }
 
-function Alert({ tone, text }: { tone: "red" | "violet"; text: string }) {
-  const c = tone === "red" ? { bg: "#fef2f2", bd: "#fecaca", fg: "#b91c1c" } : { bg: "#f5f3ff", bd: "#ddd6fe", fg: "#6d28d9" };
+function Alert({ tone, text }: { tone: "red" | "violet" | "amber"; text: string }) {
+  const c =
+    tone === "red"
+      ? { bg: "#fef2f2", bd: "#fecaca", fg: "#b91c1c" }
+      : tone === "amber"
+      ? { bg: "#fffbeb", bd: "#fde68a", fg: "#92400e" }
+      : { bg: "#f5f3ff", bd: "#ddd6fe", fg: "#6d28d9" };
   return (
     <div style={{ background: c.bg, border: `1px solid ${c.bd}`, color: c.fg, borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 14, fontWeight: 600 }}>
       {text}

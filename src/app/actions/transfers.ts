@@ -21,8 +21,10 @@ export async function requestTransferAction(
 
   const assetId = String(formData.get("asset_id") || "");
   const to_branch = String(formData.get("to_branch") || "").trim();
+  const to_room = String(formData.get("to_room") || "").trim();
   const reason = String(formData.get("reason") || "").trim();
   if (!assetId || !to_branch) return { error: "Pick a part and a destination." };
+  if (!to_room) return { error: "Say which room it should be installed in." };
   if (!reason) return { error: "Give a reason for the request." };
 
   const admin = supabaseAdmin();
@@ -45,6 +47,7 @@ export async function requestTransferAction(
     asset_id: assetId,
     from_branch,
     to_branch,
+    to_room,
     reason,
     status: "waiting",
     requested_by: profile.id,
@@ -54,7 +57,7 @@ export async function requestTransferAction(
 
   await notify(
     branchInbox(from_branch),
-    `Transfer requested: ${assetId} from ${from_branch} → ${to_branch}`,
+    `Transfer requested: ${assetId} from ${from_branch} → ${to_branch} (Room ${to_room})`,
     { kind: "transfer_requested", asset_id: assetId }
   );
   revalidateAll();
@@ -93,16 +96,18 @@ export async function decideTransferAction(
   const now = new Date().toISOString();
 
   if (decision === "accept") {
+    // The part moves branches but is not installed yet — it sits in the store
+    // and its spare label is cleared. CoolTech installs it into the room.
     await admin
       .from("assets")
-      .update({ current_branch: transfer.to_branch })
+      .update({ current_branch: transfer.to_branch, room: "store", is_spare: false })
       .eq("id", transfer.asset_id);
     await admin.from("asset_events").insert({
       asset_id: transfer.asset_id,
       kind: "moved",
       description: `Moved ${transfer.from_branch} → ${transfer.to_branch}${
-        transfer.reason ? `. ${transfer.reason}` : ""
-      }`,
+        transfer.to_room ? `, to install in Room ${transfer.to_room}` : ""
+      }${transfer.reason ? `. ${transfer.reason}` : ""}`,
       actor_name: who,
     });
     await admin
@@ -115,8 +120,8 @@ export async function decideTransferAction(
       })
       .eq("id", transferId);
     await notify(
-      branchInbox(transfer.to_branch),
-      `Transfer accepted: ${transfer.asset_id} moved to ${transfer.to_branch}`,
+      ["repair", ...branchInbox(transfer.to_branch)],
+      `Transfer accepted: ${transfer.asset_id} → ${transfer.to_branch}. CoolTech to install in Room ${transfer.to_room ?? "?"}.`,
       { kind: "transfer_accepted", asset_id: transfer.asset_id }
     );
   } else {
@@ -135,6 +140,91 @@ export async function decideTransferAction(
       { kind: "transfer_declined", asset_id: transfer.asset_id }
     );
   }
+  revalidateAll();
+  return { ok: true };
+}
+
+/** CoolTech confirms a moved part has been installed into its destination room. */
+export async function markInstalledAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  if (!(profile.role === "repair" || profile.role === "admin"))
+    return { error: "Only CoolTech (or Admin) can mark a unit installed." };
+
+  const transferId = String(formData.get("transfer_id") || "");
+  const admin = supabaseAdmin();
+  const { data: t } = await admin
+    .from("transfers")
+    .select("*")
+    .eq("id", transferId)
+    .maybeSingle();
+  if (!t) return { error: "Move record not found." };
+  const transfer = t as Transfer;
+  if (transfer.status !== "accepted")
+    return { error: "This move hasn't been accepted yet." };
+  if (transfer.installed) return { error: "Already marked installed." };
+
+  const room = (transfer.to_room || "").trim() || "store";
+  const who = actorName(profile);
+
+  await admin
+    .from("assets")
+    .update({ room, is_spare: false })
+    .eq("id", transfer.asset_id);
+
+  await admin
+    .from("transfers")
+    .update({
+      installed: true,
+      installed_by: profile.id,
+      installed_by_name: who,
+      installed_at: new Date().toISOString(),
+    })
+    .eq("id", transferId);
+
+  await admin.from("asset_events").insert({
+    asset_id: transfer.asset_id,
+    kind: "installed",
+    description: `Installed at ${transfer.to_branch}, Room ${room} by ${who}`,
+    actor_name: who,
+  });
+
+  // Auto-pair with an unpaired opposite part already in that room.
+  const { data: asset } = await admin
+    .from("assets")
+    .select("*")
+    .eq("id", transfer.asset_id)
+    .maybeSingle();
+  const a = asset as Asset | null;
+  if (a && a.part && room.toLowerCase() !== "store") {
+    const opposite = a.part === "I" ? "E" : "I";
+    const { data: mate } = await admin
+      .from("assets")
+      .select("id")
+      .eq("current_branch", transfer.to_branch)
+      .eq("room", room)
+      .eq("part", opposite)
+      .is("paired_with", null)
+      .neq("id", a.id)
+      .limit(1)
+      .maybeSingle();
+    if (mate?.id) {
+      await admin.from("assets").update({ paired_with: mate.id }).eq("id", a.id);
+      await admin.from("assets").update({ paired_with: a.id }).eq("id", mate.id);
+      await admin.from("asset_events").insert([
+        { asset_id: a.id, kind: "pairing", description: `Connected to ${mate.id} (Room ${room})`, actor_name: who },
+        { asset_id: mate.id, kind: "pairing", description: `Connected to ${a.id} (Room ${room})`, actor_name: who },
+      ]);
+    }
+  }
+
+  await notify(
+    branchInbox(transfer.to_branch),
+    `${transfer.asset_id} installed in Room ${room} at ${transfer.to_branch}`,
+    { kind: "installed", asset_id: transfer.asset_id }
+  );
   revalidateAll();
   return { ok: true };
 }

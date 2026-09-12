@@ -13,6 +13,7 @@ import { logJobAction, addChargeAction } from "@/app/actions/jobs";
 import DeleteAsset from "./DeleteAsset";
 import EditAsset from "./EditAsset";
 import QuickComplete from "./QuickComplete";
+import SpareToggle from "./SpareToggle";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
 import { daysToService, nextServiceDate } from "@/lib/status";
@@ -119,6 +120,10 @@ export default function AssetActions({
 
       {(isRepair || isAdmin) && !asset.at_vendor && (
         <PickupButton assetId={asset.id} />
+      )}
+
+      {ownsBranch && (
+        <SpareToggle assetId={asset.id} isSpare={!!asset.is_spare} />
       )}
 
       {ownsBranch && (
@@ -315,6 +320,9 @@ function RequestTransfer({
             </option>
           ))}
         </select>
+      </Field>
+      <Field label="Install in which room?">
+        <input name="to_room" className="input" placeholder="e.g. 210" required />
       </Field>
       <Field label="Reason (required)">
         <textarea name="reason" className="textarea" rows={3} required />

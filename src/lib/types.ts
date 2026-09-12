@@ -44,6 +44,7 @@ export type Asset = {
   open_issue: string | null;
   at_vendor: boolean;
   paired_with: string | null;
+  is_spare: boolean;
   created_at: string;
 };
 
@@ -52,6 +53,7 @@ export type Transfer = {
   asset_id: string;
   from_branch: string;
   to_branch: string;
+  to_room: string | null;
   reason: string | null;
   status: TransferStatus;
   requested_by: string | null;
@@ -60,6 +62,10 @@ export type Transfer = {
   decided_by: string | null;
   decided_by_name: string | null;
   decided_at: string | null;
+  installed: boolean;
+  installed_by: string | null;
+  installed_by_name: string | null;
+  installed_at: string | null;
 };
 
 export type Job = {

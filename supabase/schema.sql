@@ -86,6 +86,7 @@ create table if not exists public.assets (
   open_issue text,
   at_vendor boolean not null default false,
   paired_with text references public.assets(id),    -- the connected opposite part
+  is_spare boolean not null default false,          -- manager-labelled spare, movable
   created_at timestamptz not null default now()
 );
 create index if not exists assets_seq_idx on public.assets(type, home_branch, part, seq);
@@ -98,6 +99,7 @@ create table if not exists public.transfers (
   asset_id text not null references public.assets(id),
   from_branch text not null references public.branches(code),
   to_branch text not null references public.branches(code),
+  to_room text,                                     -- room the requester wants it installed in
   reason text,
   status transfer_status not null default 'waiting',
   requested_by uuid references public.profiles(id),
@@ -105,7 +107,11 @@ create table if not exists public.transfers (
   requested_at timestamptz not null default now(),
   decided_by uuid references public.profiles(id),
   decided_by_name text,
-  decided_at timestamptz
+  decided_at timestamptz,
+  installed boolean not null default false,         -- CoolTech confirmed installation
+  installed_by uuid references public.profiles(id),
+  installed_by_name text,
+  installed_at timestamptz
 );
 create index if not exists transfers_status_idx on public.transfers(status);
 create index if not exists transfers_asset_idx on public.transfers(asset_id);
