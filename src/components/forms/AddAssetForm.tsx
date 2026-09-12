@@ -48,9 +48,11 @@ function Inner({
   const [type, setType] = useState("AC");
   const [part, setPart] = useState("I");
   const [branch, setBranch] = useState(lockedBranch || branches[0]?.code || "");
+  const [customId, setCustomId] = useState("");
 
   const partSeg = type === "AC" ? `-${part}` : "";
-  const idPreview = branch ? `${type}-${branch}${partSeg}-###` : "—";
+  const autoPattern = branch ? `${type}-${branch}${partSeg}-###` : "—";
+  const idPreview = customId.trim() ? customId.trim().toUpperCase() : autoPattern;
 
   return (
     <form action={action}>
@@ -103,6 +105,17 @@ function Inner({
         </Field>
       </Row>
 
+      <Field label="Custom ID (optional — leave blank to auto-number)">
+        <input
+          name="custom_id"
+          className="input"
+          value={customId}
+          onChange={(e) => setCustomId(e.target.value)}
+          placeholder={autoPattern}
+          autoCapitalize="characters"
+        />
+      </Field>
+
       <div
         style={{
           background: "#f6f7f9",
@@ -115,7 +128,9 @@ function Inner({
       >
         ID it will get: <strong style={{ letterSpacing: 0.3 }}>{idPreview}</strong>
         <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-          The three-digit number is assigned in sequence when you save.
+          {customId.trim()
+            ? "Using your custom ID (must be unique)."
+            : "Leave the field above blank and the three-digit number is assigned in sequence when you save."}
         </div>
       </div>
 

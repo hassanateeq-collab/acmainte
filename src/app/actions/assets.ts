@@ -61,37 +61,61 @@ export async function createAssetAction(
   )
     return { error: "You can only add assets to your own branch." };
 
-  // Retry a couple of times in case two adds race for the same sequence.
+  const customId = String(formData.get("custom_id") || "").trim().toUpperCase();
+
+  const insertRow = (id: string, seq: number) =>
+    supabaseAdmin().from("assets").insert({
+      id,
+      type,
+      part,
+      home_branch,
+      current_branch: home_branch,
+      room: room || "store",
+      seq,
+      installed_date,
+      last_service_date,
+      expected_life_years,
+      service_interval_days,
+    });
+
+  async function afterInsert(id: string) {
+    await supabaseAdmin().from("asset_events").insert({
+      asset_id: id,
+      kind: "installed",
+      description: `Registered at ${home_branch}${room ? `, room ${room}` : " (store)"}`,
+      actor_name: actorName(profile),
+    });
+    await notify(
+      branchInbox(home_branch),
+      `New asset ${id} registered at ${home_branch}`,
+      { kind: "asset_added", asset_id: id }
+    );
+    revalidateAll();
+  }
+
+  // If the user typed a custom ID, use it verbatim (must be unique).
+  if (customId) {
+    if (!/^[A-Z0-9][A-Z0-9-]*$/.test(customId))
+      return { error: "ID can use letters, numbers and dashes only (e.g. AC-FSL-I-204)." };
+    const { data: dup } = await supabaseAdmin()
+      .from("assets")
+      .select("id")
+      .eq("id", customId)
+      .maybeSingle();
+    if (dup) return { error: `An asset with ID ${customId} already exists.` };
+    const { seq } = await buildNextId(type, home_branch, part);
+    const { error } = await insertRow(customId, seq);
+    if (error) return { error: error.message };
+    await afterInsert(customId);
+    return { ok: true };
+  }
+
+  // Otherwise auto-number. Retry in case two adds race for the same sequence.
   for (let attempt = 0; attempt < 3; attempt++) {
     const { id, seq } = await buildNextId(type, home_branch, part);
-    const { error } = await supabaseAdmin()
-      .from("assets")
-      .insert({
-        id,
-        type,
-        part,
-        home_branch,
-        current_branch: home_branch,
-        room: room || "store",
-        seq,
-        installed_date,
-        last_service_date,
-        expected_life_years,
-        service_interval_days,
-      });
+    const { error } = await insertRow(id, seq);
     if (!error) {
-      await supabaseAdmin().from("asset_events").insert({
-        asset_id: id,
-        kind: "installed",
-        description: `Registered at ${home_branch}${room ? `, room ${room}` : " (store)"}`,
-        actor_name: actorName(profile),
-      });
-      await notify(
-        branchInbox(home_branch),
-        `New asset ${id} registered at ${home_branch}`,
-        { kind: "asset_added", asset_id: id }
-      );
-      revalidateAll();
+      await afterInsert(id);
       return { ok: true };
     }
     if (!String(error.message).includes("duplicate")) {
