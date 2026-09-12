@@ -35,6 +35,10 @@ export async function requestTransferAction(
     .maybeSingle();
   if (!asset) return { error: "Asset not found." };
   const from_branch = (asset as Asset).current_branch;
+  if (from_branch !== (asset as Asset).home_branch)
+    return {
+      error: "This part is on loan from another branch — it can only be moved back to its home branch.",
+    };
   if (from_branch === to_branch)
     return { error: "That part is already at the destination branch." };
   if (

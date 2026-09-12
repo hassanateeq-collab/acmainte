@@ -398,6 +398,10 @@ export async function setSpareAction(
     (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
   if (!canEdit)
     return { error: "Only Admin or the owning branch manager can label this asset." };
+  if (spare && a.current_branch !== a.home_branch)
+    return {
+      error: "A borrowed part can't be labelled spare — move it back to its home branch first.",
+    };
 
   const { error } = await admin
     .from("assets")
@@ -447,6 +451,11 @@ export async function deleteAssetAction(
     (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
   if (!canDelete)
     return { error: "Only Admin or the owning branch manager can delete an asset." };
+  // A part on loan from another branch can only be deleted by Admin.
+  if (profile.role !== "admin" && a.current_branch !== a.home_branch)
+    return {
+      error: "This part is on loan from another branch — only Admin can delete it. Move it back first.",
+    };
 
   // Break any pairing on both sides so no dangling links remain.
   await admin.from("assets").update({ paired_with: null }).eq("paired_with", assetId);

@@ -38,6 +38,10 @@ export default function AssetActions({
     isAdmin ||
     (profile.role === "branch_manager" && profile.branch_code === asset.current_branch);
 
+  // A part living away from its home branch is "borrowed": the holding branch
+  // may only send it back, not re-label it spare or transfer it onward.
+  const atHome = asset.current_branch === asset.home_branch;
+
   // Quick "mark done" only makes sense when there's something to complete.
   const dts = daysToService(asset);
   const nsd = nextServiceDate(asset);
@@ -107,7 +111,7 @@ export default function AssetActions({
         </Modal>
       )}
 
-      {!isRepair && (
+      {!isRepair && atHome && (
         <Modal
           triggerLabel="Request transfer"
           title={`Request transfer — ${asset.id}`}
@@ -123,7 +127,7 @@ export default function AssetActions({
         <PickupButton assetId={asset.id} />
       )}
 
-      {ownsBranch && (
+      {ownsBranch && atHome && (
         <SpareToggle assetId={asset.id} isSpare={!!asset.is_spare} />
       )}
 
@@ -145,7 +149,8 @@ export default function AssetActions({
         />
       )}
 
-      {ownsBranch && (
+      {/* A borrowed part (away from home) can only be deleted by Admin. */}
+      {ownsBranch && (isAdmin || atHome) && (
         <DeleteAsset
           assetId={asset.id}
           triggerLabel="Delete asset"
