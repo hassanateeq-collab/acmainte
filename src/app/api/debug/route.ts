@@ -1,87 +1,66 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
 
 /**
- * Temporary diagnostic endpoint. Reports env presence + key roles, raw
- * connectivity from the server to Supabase, session status, and profile
- * lookup. Never returns secret values. Remove once things work.
+ * Temporary diagnostic endpoint. Tests whether the CLIENT key (publishable /
+ * anon) and the SERVER key (secret / service_role) are accepted by Supabase,
+ * and prints a plain-English verdict. Never returns secret values.
  */
-function roleOf(jwt?: string): string | null {
+async function testKey(url: string, key: string) {
   try {
-    if (!jwt) return null;
-    const payload = JSON.parse(
-      Buffer.from(jwt.split(".")[1], "base64").toString("utf8")
-    );
-    return payload.role ?? null;
-  } catch {
-    return null;
+    const r = await fetch(`${url}/rest/v1/profiles?select=id&limit=1`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    const body = (await r.text()).slice(0, 200);
+    return { status: r.status, ok: r.status >= 200 && r.status < 300, body };
+  } catch (e) {
+    return { status: 0, ok: false, body: String(e instanceof Error ? e.message : e) };
   }
 }
 
 export async function GET() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  const out: Record<string, unknown> = {};
+  const clientKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+  const serverKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 
-  out.env = {
-    NEXT_PUBLIC_SUPABASE_URL: url || null,
-    hasAnon: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    hasServiceRole: !!service,
-    anonKeyRole: roleOf(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
-    serviceKeyRole: roleOf(service),
-  };
+  const client = await testKey(url, clientKey);
+  const server = await testKey(url, serverKey);
 
-  // 1) Raw connectivity: can the SERVER reach Supabase auth at all?
-  try {
-    const r = await fetch(`${url}/auth/v1/health`, {
-      headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
-    });
-    out.authHealth = { status: r.status, body: (await r.text()).slice(0, 200) };
-  } catch (e) {
-    out.authHealthError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
-  }
-
-  // 2) Raw REST call with the service key: is the key accepted + table present?
-  try {
-    const r = await fetch(`${url}/rest/v1/profiles?select=id&limit=1`, {
-      headers: {
-        apikey: service,
-        Authorization: `Bearer ${service}`,
-      },
-    });
-    out.restProfiles = { status: r.status, body: (await r.text()).slice(0, 300) };
-  } catch (e) {
-    out.restProfilesError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
-  }
-
-  // 3) Session via the SSR server client.
+  let session: unknown = null;
+  let sessionNote = "";
   try {
     const supabase = await createSupabaseServerClient();
-    const { data, error } = await supabase.auth.getUser();
-    out.session = data.user ? { id: data.user.id, email: data.user.email } : null;
-    if (error) out.getUserError = `${error.name}: ${error.message}`;
+    const { data } = await supabase.auth.getUser();
+    session = data.user ? { id: data.user.id, email: data.user.email } : null;
+    if (!data.user) sessionNote = "no active login cookie (expected if you haven't signed in this browser)";
   } catch (e) {
-    out.sessionError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
+    sessionNote = String(e instanceof Error ? e.message : e);
   }
 
-  // 4) Profiles via the admin client.
-  try {
-    const admin = supabaseAdmin();
-    const { count, error } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true });
-    out.profilesTableCount = count;
-    if (error)
-      out.profilesTableError = JSON.stringify({
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      });
-  } catch (e) {
-    out.adminError = String(e instanceof Error ? `${e.name}: ${e.message}` : e);
+  const clientFmt = clientKey.startsWith("sb_") ? "new (sb_)" : clientKey.startsWith("ey") ? "legacy JWT (eyJ)" : "unknown/empty";
+  const serverFmt = serverKey.startsWith("sb_") ? "new (sb_)" : serverKey.startsWith("ey") ? "legacy JWT (eyJ)" : "unknown/empty";
+
+  let verdict: string;
+  if (client.ok && server.ok) {
+    verdict = "✅ BOTH KEYS WORK. If login still bounces, the issue is the user/profile, not the keys.";
+  } else if (!client.ok && !server.ok) {
+    verdict = "❌ BOTH keys are REJECTED by Supabase. Update BOTH keys in .env.local, then restart the dev server.";
+  } else if (!client.ok) {
+    verdict = "❌ The CLIENT key (NEXT_PUBLIC_SUPABASE_ANON_KEY) is REJECTED — that's why sign-in fails. Set it to your sb_publishable_ key.";
+  } else {
+    verdict = "❌ The SERVER key (SUPABASE_SERVICE_ROLE_KEY) is REJECTED. Set it to your sb_secret_ key.";
   }
 
-  return NextResponse.json(out, { status: 200 });
+  return NextResponse.json(
+    {
+      verdict,
+      clientKey: { format: clientFmt, accepted: client.ok, httpStatus: client.status, response: client.body },
+      serverKey: { format: serverFmt, accepted: server.ok, httpStatus: server.status, response: server.body },
+      supabaseUrl: url,
+      session,
+      sessionNote,
+      reminder: "After editing .env.local you MUST stop (Ctrl+C) and re-run `npm run dev` — env vars load only at startup.",
+    },
+    { status: 200 }
+  );
 }
