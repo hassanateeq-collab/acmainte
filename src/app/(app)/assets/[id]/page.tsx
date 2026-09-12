@@ -95,6 +95,11 @@ export default async function AssetRecordPage({
         <Alert tone="red" text={`Open issue: ${asset.open_issue}`} />
       )}
       {asset.at_vendor && <Alert tone="violet" text="This unit is with CoolTech." />}
+      {homeDiffers && (
+        <div style={{ marginBottom: 12 }}>
+          <Tag tone="amber">Moved from {asset.home_branch}</Tag>
+        </div>
+      )}
       {asset.is_spare && !asset.at_vendor && (
         <Alert tone="amber" text="Labelled as spare — available for other branches to request on the Move page." />
       )}

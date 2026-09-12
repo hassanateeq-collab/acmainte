@@ -98,7 +98,7 @@ export default async function ApprovalsPage() {
                 <td>{t.from_branch} → {t.to_branch}{t.to_room ? ` (Room ${t.to_room})` : ""}</td>
                 <td>
                   {t.status === "accepted" ? (
-                    t.installed ? <Tag tone="brand">Installed</Tag> : <Tag tone="brand">Accepted</Tag>
+                    t.installed ? <Tag tone="brand">Moved</Tag> : <Tag tone="amber">Waiting for installation</Tag>
                   ) : (
                     <Tag>Declined</Tag>
                   )}

@@ -14,6 +14,7 @@ import DeleteAsset from "./DeleteAsset";
 import EditAsset from "./EditAsset";
 import QuickComplete from "./QuickComplete";
 import SpareToggle from "./SpareToggle";
+import MoveBack from "./MoveBack";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
 import { daysToService, nextServiceDate } from "@/lib/status";
@@ -124,6 +125,10 @@ export default function AssetActions({
 
       {ownsBranch && (
         <SpareToggle assetId={asset.id} isSpare={!!asset.is_spare} />
+      )}
+
+      {ownsBranch && asset.current_branch !== asset.home_branch && (
+        <MoveBack assetId={asset.id} homeBranch={asset.home_branch} />
       )}
 
       {ownsBranch && (

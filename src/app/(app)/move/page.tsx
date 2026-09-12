@@ -107,7 +107,7 @@ export default async function MovePage() {
                   <td>
                     {a.current_branch}
                     {a.current_branch !== a.home_branch && (
-                      <span style={{ marginLeft: 6 }}><Tag tone="amber">moved</Tag></span>
+                      <span style={{ marginLeft: 6 }}><Tag tone="amber">Moved from {a.home_branch}</Tag></span>
                     )}
                   </td>
                   <td>
@@ -145,7 +145,7 @@ export default async function MovePage() {
                   <td style={{ maxWidth: 240, color: "var(--muted)", fontSize: 13 }}>{t.reason}</td>
                   <td>
                     {t.status === "accepted" ? (
-                      t.installed ? <Tag tone="brand">Installed</Tag> : <Tag tone="amber">To install</Tag>
+                      t.installed ? <Tag tone="brand">Moved</Tag> : <Tag tone="amber">Waiting for installation</Tag>
                     ) : t.status === "declined" ? (
                       <Tag>Declined</Tag>
                     ) : (
@@ -324,7 +324,7 @@ export default async function MovePage() {
                 <td>{t.from_branch} → {t.to_branch}{t.to_room ? ` (Room ${t.to_room})` : ""}</td>
                 <td>
                   {t.status === "accepted" ? (
-                    t.installed ? <Tag tone="brand">Installed</Tag> : <Tag tone="amber">Accepted · to install</Tag>
+                    t.installed ? <Tag tone="brand">Moved</Tag> : <Tag tone="amber">Waiting for installation</Tag>
                   ) : (
                     <Tag>Declined</Tag>
                   )}

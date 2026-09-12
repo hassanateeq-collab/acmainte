@@ -228,3 +228,78 @@ export async function markInstalledAction(
   revalidateAll();
   return { ok: true };
 }
+
+/** Send an asset back to its home branch. Admin or the current branch manager. */
+export async function moveBackAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  if (profile.role === "repair")
+    return { error: "The repair company cannot move parts back." };
+
+  const assetId = String(formData.get("asset_id") || "");
+  const admin = supabaseAdmin();
+  const { data: asset } = await admin
+    .from("assets")
+    .select("*")
+    .eq("id", assetId)
+    .maybeSingle();
+  if (!asset) return { error: "Asset not found." };
+  const a = asset as Asset;
+
+  const canMove =
+    profile.role === "admin" ||
+    (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
+  if (!canMove)
+    return { error: "Only Admin or the branch currently holding it can move it back." };
+  if (a.current_branch === a.home_branch)
+    return { error: "This part is already at its home branch." };
+
+  const who = actorName(profile);
+  const now = new Date().toISOString();
+  const from = a.current_branch;
+  const to = a.home_branch;
+
+  // Break any pairing on both sides — it's leaving the room.
+  if (a.paired_with) {
+    await admin.from("assets").update({ paired_with: null }).eq("id", a.paired_with);
+  }
+  await admin
+    .from("assets")
+    .update({ current_branch: to, room: "store", is_spare: false, paired_with: null })
+    .eq("id", assetId);
+
+  // Record it as a completed move so the repair team's history stays whole.
+  await admin.from("transfers").insert({
+    asset_id: assetId,
+    from_branch: from,
+    to_branch: to,
+    reason: "Returned to home branch",
+    status: "accepted",
+    requested_by: profile.id,
+    requested_by_name: who,
+    decided_by: profile.id,
+    decided_by_name: who,
+    decided_at: now,
+    installed: true,
+    installed_by: profile.id,
+    installed_by_name: who,
+    installed_at: now,
+  });
+
+  await admin.from("asset_events").insert({
+    asset_id: assetId,
+    kind: "moved",
+    description: `Moved back to home branch ${to} (from ${from})`,
+    actor_name: who,
+  });
+
+  await notify(
+    ["repair", ...branchInbox(to)],
+    `${assetId} moved back to its home branch ${to}`,
+    { kind: "moved_back", asset_id: assetId }
+  );
+  revalidateAll();
+  return { ok: true };
+}
