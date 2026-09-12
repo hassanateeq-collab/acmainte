@@ -69,6 +69,14 @@ export default function AssetsTable({
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
     return rows.filter((r) => {
+      // A branch manager only ever sees assets currently at their own branch
+      // (so parts moved in from elsewhere show here, and moved-out ones drop off).
+      if (
+        viewer.role === "branch_manager" &&
+        viewer.branch &&
+        r.branch !== viewer.branch
+      )
+        return false;
       if (showBranchTabs && branch !== "All" && r.branch !== branch) return false;
       if (status !== "All") {
         const s = [r.interior?.status, r.exterior?.status].filter(Boolean);
@@ -88,7 +96,7 @@ export default function AssetsTable({
       }
       return true;
     });
-  }, [rows, branch, status, q, showBranchTabs]);
+  }, [rows, branch, status, q, showBranchTabs, viewer.role, viewer.branch]);
 
   return (
     <div>
@@ -124,7 +132,10 @@ export default function AssetsTable({
           onChange={(e) => setQ(e.target.value)}
         />
         <div style={{ marginLeft: "auto", color: "var(--muted)", fontSize: 13 }}>
-          {filtered.length} of {rows.length}
+          {filtered.length} of{" "}
+          {viewer.role === "branch_manager" && viewer.branch
+            ? rows.filter((r) => r.branch === viewer.branch).length
+            : rows.length}
         </div>
       </div>
 
