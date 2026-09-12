@@ -4,6 +4,7 @@ import { listAssets } from "@/lib/data";
 import { mockOccupancy } from "@/lib/rows";
 import PageHeader from "@/components/PageHeader";
 import PickupInline from "@/components/PickupInline";
+import QuickComplete from "@/components/QuickComplete";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,9 @@ export default async function IssuesPage() {
                 <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room} (${mockOccupancy(a.room)})` : " · Store"}</td>
                 <td style={{ maxWidth: 320 }}>{a.open_issue}</td>
                 <td>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Link href={`/assets/${a.id}`} className="btn btn-sm btn-primary">Log repair</Link>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <QuickComplete assetId={a.id} kind="Repair" label="✓ Repaired" />
+                    <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
                     {canPickup && <PickupInline assetId={a.id} />}
                   </div>
                 </td>

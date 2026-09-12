@@ -12,6 +12,7 @@ import { requestTransferAction } from "@/app/actions/transfers";
 import { logJobAction, addChargeAction } from "@/app/actions/jobs";
 import DeleteAsset from "./DeleteAsset";
 import EditAsset from "./EditAsset";
+import QuickComplete from "./QuickComplete";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
 import type { Asset, Branch, Profile } from "@/lib/types";
@@ -53,6 +54,9 @@ export default function AssetActions({
       >
         {(close) => <LogJob assetId={asset.id} close={close} />}
       </Modal>
+
+      {(isRepair || ownsBranch) && <QuickComplete assetId={asset.id} kind="Service" />}
+      {(isRepair || ownsBranch) && <QuickComplete assetId={asset.id} kind="Repair" />}
 
       {(isAdmin || isRepair) && (
         <Modal

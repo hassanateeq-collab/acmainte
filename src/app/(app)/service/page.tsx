@@ -6,6 +6,7 @@ import { fmtDate } from "@/lib/format";
 import { mockOccupancy } from "@/lib/rows";
 import PageHeader from "@/components/PageHeader";
 import PickupInline from "@/components/PickupInline";
+import QuickComplete from "@/components/QuickComplete";
 import { StatusBadge } from "@/components/StatusBadge";
 import type { Asset } from "@/lib/types";
 
@@ -68,8 +69,9 @@ export default async function ServicePage() {
                 <td>{m?.repairs ?? 0}</td>
                 <td style={{ maxWidth: 220, color: "var(--muted)", fontSize: 13 }}>{m?.lastProblem ?? "—"}</td>
                 <td>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <Link href={`/assets/${a.id}`} className="btn btn-sm btn-primary">Log service</Link>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <QuickComplete assetId={a.id} kind="Service" label="✓ Serviced" />
+                    <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
                     {canPickup && <PickupInline assetId={a.id} />}
                   </div>
                 </td>
