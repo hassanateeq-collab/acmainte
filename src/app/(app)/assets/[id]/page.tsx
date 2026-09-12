@@ -129,7 +129,25 @@ export default async function AssetRecordPage({
             </Detail>
             <Detail label="Occupancy">{mockOccupancy(asset.room)}</Detail>
             <Detail label="Last service">{fmtDate(asset.last_service_date)}</Detail>
-            <Detail label="Next service">{fmtDate(nsd ? nsd.toISOString() : null)}</Detail>
+            <Detail label="Next service">
+              {fmtDate(nsd ? nsd.toISOString() : null)}
+              {dts !== null && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    marginTop: 2,
+                    color: dts <= 0 ? "#b91c1c" : dts <= 14 ? "#b45309" : "var(--muted)",
+                  }}
+                >
+                  {dts < 0
+                    ? `overdue ${-dts} day${-dts === 1 ? "" : "s"}`
+                    : dts === 0
+                    ? "due today"
+                    : `in ${dts} day${dts === 1 ? "" : "s"}`}
+                  {dts > 0 && dts <= 14 ? " · service due" : ""}
+                </div>
+              )}
+            </Detail>
             <Detail label="Installed">{fmtDate(asset.installed_date)}</Detail>
             <Detail label="Life left">
               {(() => {
