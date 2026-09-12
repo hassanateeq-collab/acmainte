@@ -10,15 +10,30 @@ import { Tag } from "@/components/StatusBadge";
 
 export const dynamic = "force-dynamic";
 
-export default async function BillsPage() {
+export default async function BillsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ from?: string; to?: string }>;
+}) {
   const profile = await requireProfile();
+  const { from = "", to = "" } = await searchParams;
   const [jobs, assets] = await Promise.all([listAllJobs(), listAssets()]);
   const branchOf = new Map(assets.map((a) => [a.id, a.current_branch]));
 
-  const scoped =
+  const branchScoped =
     profile.role === "branch_manager"
       ? jobs.filter((j) => branchOf.get(j.asset_id) === profile.branch_code)
       : jobs;
+
+  // Date-range filter (inclusive). Job dates are ISO "YYYY-MM-DD" strings,
+  // so plain string comparison is safe.
+  const scoped = branchScoped.filter((j) => {
+    const d = String(j.date || "").slice(0, 10);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    return true;
+  });
+  const filtered = Boolean(from || to);
 
   const totalBill = scoped.reduce((s, j) => s + Number(j.bill_amount || 0), 0);
   const totalAdd = scoped.reduce(
@@ -62,6 +77,47 @@ export default async function BillsPage() {
           Generated {new Date().toLocaleString("en-GB")}
         </div>
       </div>
+
+      {/* Date-range filter */}
+      <form
+        method="GET"
+        className="card no-print"
+        style={{
+          padding: 14,
+          marginBottom: 16,
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-end",
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <label className="label" htmlFor="from">From date</label>
+          <input type="date" id="from" name="from" defaultValue={from} className="input" style={{ width: 170 }} />
+        </div>
+        <div>
+          <label className="label" htmlFor="to">To date</label>
+          <input type="date" id="to" name="to" defaultValue={to} className="input" style={{ width: 170 }} />
+        </div>
+        <button type="submit" className="btn btn-primary">Apply</button>
+        {filtered && (
+          <Link href="/bills" className="btn">Clear</Link>
+        )}
+        {filtered && (
+          <span style={{ fontSize: 13, color: "var(--muted)", marginLeft: "auto" }}>
+            Showing {scoped.length} entr{scoped.length === 1 ? "y" : "ies"}
+            {from && ` from ${fmtDate(from)}`}
+            {to && ` to ${fmtDate(to)}`}
+          </span>
+        )}
+      </form>
+
+      {/* Shown only when printing / saving as PDF — echoes the active range */}
+      {filtered && (
+        <div className="print-only" style={{ marginBottom: 10, fontSize: 12, color: "#555" }}>
+          Period: {from ? fmtDate(from) : "start"} — {to ? fmtDate(to) : "today"}
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, marginBottom: 20 }}>
         {tiles.map((t, i) => (
