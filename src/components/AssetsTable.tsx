@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge, Tag } from "./StatusBadge";
+import DeleteAsset from "./DeleteAsset";
 import { fmtDate, money } from "@/lib/format";
 import type { AssetStatus } from "@/lib/types";
 
@@ -35,11 +36,17 @@ export default function AssetsTable({
   rows,
   branches,
   showBranchTabs,
+  viewer,
 }: {
   rows: ClientRow[];
   branches: { code: string; name: string }[];
   showBranchTabs: boolean;
+  viewer: { role: string; branch: string | null };
 }) {
+  const canDelete = (rowBranch: string) =>
+    viewer.role === "admin" ||
+    (viewer.role === "branch_manager" && viewer.branch === rowBranch);
+  const showActions = viewer.role !== "repair";
   const params = useSearchParams();
   const initialStatus = (params.get("status") as AssetStatus) || "All";
 
@@ -123,12 +130,13 @@ export default function AssetsTable({
               <th>Life left</th>
               <th>Repairs</th>
               <th>Total spent</th>
+              {showActions && <th>Actions</th>}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={8} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
+                <td colSpan={showActions ? 9 : 8} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
                   No assets match.
                 </td>
               </tr>
@@ -169,6 +177,22 @@ export default function AssetsTable({
                 <td>{r.lifeLeft === null ? "—" : `${r.lifeLeft} yr`}</td>
                 <td>{r.repairs}</td>
                 <td>{money(r.total)}</td>
+                {showActions && (
+                  <td>
+                    {canDelete(r.branch) ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+                        {r.interior && (
+                          <DeleteAsset assetId={r.interior.id} triggerLabel="Delete interior" />
+                        )}
+                        {r.exterior && (
+                          <DeleteAsset assetId={r.exterior.id} triggerLabel="Delete exterior" />
+                        )}
+                      </div>
+                    ) : (
+                      <span style={{ color: "var(--muted)", fontSize: 12 }}>—</span>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>

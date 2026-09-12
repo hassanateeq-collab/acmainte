@@ -256,3 +256,49 @@ export async function pickupAction(
   revalidateAll();
   return { ok: true };
 }
+
+/** Permanently delete an asset and its history. Admin or owning branch manager. */
+export async function deleteAssetAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  const assetId = String(formData.get("asset_id") || "");
+  if (!assetId) return { error: "No asset specified." };
+
+  const admin = supabaseAdmin();
+  const { data: asset } = await admin
+    .from("assets")
+    .select("*")
+    .eq("id", assetId)
+    .maybeSingle();
+  if (!asset) return { error: "Asset not found." };
+
+  const a = asset as Asset;
+  const canDelete =
+    profile.role === "admin" ||
+    (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
+  if (!canDelete)
+    return { error: "Only Admin or the owning branch manager can delete an asset." };
+
+  // Break any pairing on both sides so no dangling links remain.
+  await admin.from("assets").update({ paired_with: null }).eq("paired_with", assetId);
+  await admin.from("assets").update({ paired_with: null }).eq("id", assetId);
+
+  // Remove dependent records (job_charges/job_edits cascade from jobs).
+  await admin.from("transfers").delete().eq("asset_id", assetId);
+  await admin.from("jobs").delete().eq("asset_id", assetId);
+  await admin.from("asset_events").delete().eq("asset_id", assetId);
+  await admin.from("notifications").delete().eq("asset_id", assetId);
+
+  const { error } = await admin.from("assets").delete().eq("id", assetId);
+  if (error) return { error: error.message };
+
+  await notify(
+    branchInbox(a.current_branch),
+    `Asset ${assetId} was deleted by ${actorName(profile)}`,
+    { kind: "asset_deleted" }
+  );
+  revalidateAll();
+  return { ok: true };
+}

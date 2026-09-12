@@ -10,6 +10,7 @@ import {
 } from "@/app/actions/assets";
 import { requestTransferAction } from "@/app/actions/transfers";
 import { logJobAction, addChargeAction } from "@/app/actions/jobs";
+import DeleteAsset from "./DeleteAsset";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
 import type { Asset, Branch, Profile } from "@/lib/types";
@@ -88,6 +89,14 @@ export default function AssetActions({
 
       {(isRepair || isAdmin) && !asset.at_vendor && (
         <PickupButton assetId={asset.id} />
+      )}
+
+      {ownsBranch && (
+        <DeleteAsset
+          assetId={asset.id}
+          triggerLabel="Delete asset"
+          triggerClassName="btn btn-sm btn-danger"
+        />
       )}
     </div>
   );

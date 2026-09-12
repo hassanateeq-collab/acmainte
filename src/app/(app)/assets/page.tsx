@@ -76,6 +76,7 @@ export default async function AssetsPage() {
         rows={clientRows}
         branches={branches.map((b) => ({ code: b.code, name: b.name }))}
         showBranchTabs={profile.role !== "branch_manager"}
+        viewer={{ role: profile.role, branch: profile.branch_code }}
       />
     </div>
   );
