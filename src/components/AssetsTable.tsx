@@ -5,10 +5,20 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { StatusBadge, Tag } from "./StatusBadge";
 import DeleteAsset from "./DeleteAsset";
+import EditAsset from "./EditAsset";
 import { fmtDate, money } from "@/lib/format";
 import type { AssetStatus } from "@/lib/types";
 
-type ClientUnit = { id: string; status: AssetStatus; swappedHome: string } | null;
+type ClientUnit = {
+  id: string;
+  status: AssetStatus;
+  swappedHome: string;
+  room: string | null;
+  installed_date: string | null;
+  last_service_date: string | null;
+  expected_life_years: number;
+  service_interval_days: number;
+} | null;
 
 export type ClientRow = {
   key: string;
@@ -182,10 +192,18 @@ export default function AssetsTable({
                     {canDelete(r.branch) ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
                         {r.interior && (
-                          <DeleteAsset assetId={r.interior.id} triggerLabel="Delete interior" />
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 24 }}>Int</span>
+                            <EditAsset asset={r.interior} />
+                            <DeleteAsset assetId={r.interior.id} />
+                          </div>
                         )}
                         {r.exterior && (
-                          <DeleteAsset assetId={r.exterior.id} triggerLabel="Delete exterior" />
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span style={{ fontSize: 11, color: "var(--muted)", minWidth: 24 }}>Ext</span>
+                            <EditAsset asset={r.exterior} />
+                            <DeleteAsset assetId={r.exterior.id} />
+                          </div>
                         )}
                       </div>
                     ) : (

@@ -4,6 +4,13 @@ export type TransferStatus = "waiting" | "accepted" | "declined";
 
 export type Branch = { code: string; name: string; sort: number };
 
+export type AssetType = {
+  code: string;
+  name: string;
+  has_parts: boolean;
+  sort: number;
+};
+
 export type Profile = {
   id: string;
   email: string | null;

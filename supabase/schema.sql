@@ -34,6 +34,19 @@ insert into public.branches (code, name, sort) values
   ('DHA','DHA',4)
 on conflict (code) do update set name = excluded.name, sort = excluded.sort;
 
+-- --- Asset types (admin-managed) ---------------------------------------------
+create table if not exists public.asset_types (
+  code text primary key,
+  name text not null,
+  has_parts boolean not null default false,   -- true = interior/exterior (like AC)
+  sort int not null default 0,
+  created_at timestamptz not null default now()
+);
+insert into public.asset_types (code, name, has_parts, sort) values
+  ('AC','Air conditioner',true,1)
+on conflict (code) do nothing;
+alter table public.asset_types enable row level security;
+
 -- --- Profiles (one row per auth user) ----------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,

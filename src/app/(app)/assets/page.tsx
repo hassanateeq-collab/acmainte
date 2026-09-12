@@ -1,9 +1,10 @@
 import { requireProfile } from "@/lib/auth";
-import { listAssets, listAllJobs, listBranches, jobTotal } from "@/lib/data";
+import { listAssets, listAllJobs, listBranches, listAssetTypes, jobTotal } from "@/lib/data";
 import { assetStatus, nextServiceDate, lifeLeftYears } from "@/lib/status";
 import { buildAssetRows, mockOccupancy } from "@/lib/rows";
 import PageHeader from "@/components/PageHeader";
 import AddAssetForm from "@/components/forms/AddAssetForm";
+import ManageTypes from "@/components/ManageTypes";
 import AssetsTable, { type ClientRow } from "@/components/AssetsTable";
 import type { Asset } from "@/lib/types";
 
@@ -11,10 +12,11 @@ export const dynamic = "force-dynamic";
 
 export default async function AssetsPage() {
   const profile = await requireProfile();
-  const [assets, jobs, branches] = await Promise.all([
+  const [assets, jobs, branches, types] = await Promise.all([
     listAssets(),
     listAllJobs(),
     listBranches(),
+    listAssetTypes(),
   ]);
 
   // Aggregate money + repair counts per asset.
@@ -34,6 +36,11 @@ export default async function AssetsPage() {
           id: a.id,
           status: assetStatus(a),
           swappedHome: a.home_branch,
+          room: a.room,
+          installed_date: a.installed_date,
+          last_service_date: a.last_service_date,
+          expected_life_years: a.expected_life_years,
+          service_interval_days: a.service_interval_days,
         }
       : null;
 
@@ -69,7 +76,12 @@ export default async function AssetsPage() {
         title={profile.role === "repair" ? "All ACs" : "Assets"}
         subtitle="One row per AC set — interior with its connected exterior. Click any unit to open its record."
         actions={
-          showAdd ? <AddAssetForm branches={branches} profile={profile} /> : undefined
+          showAdd ? (
+            <>
+              {profile.role === "admin" && <ManageTypes types={types} />}
+              <AddAssetForm branches={branches} profile={profile} types={types} />
+            </>
+          ) : undefined
         }
       />
       <AssetsTable

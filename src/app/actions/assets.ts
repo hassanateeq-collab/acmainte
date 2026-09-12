@@ -53,8 +53,19 @@ export async function createAssetAction(
     Number(formData.get("service_interval_days")) || 90;
 
   if (!home_branch) return { error: "Choose the home branch." };
-  if (type === "AC" && !part)
-    return { error: "For an AC, choose interior (I) or exterior (E)." };
+
+  // Does this type use interior/exterior parts? Look it up (fallback: AC does).
+  let typeHasParts = type === "AC";
+  {
+    const { data: t } = await supabaseAdmin()
+      .from("asset_types")
+      .select("has_parts")
+      .eq("code", type)
+      .maybeSingle();
+    if (t) typeHasParts = !!t.has_parts;
+  }
+  if (typeHasParts && !part)
+    return { error: `Choose interior (I) or exterior (E) for ${type}.` };
   if (
     profile.role === "branch_manager" &&
     profile.branch_code !== home_branch
@@ -277,6 +288,58 @@ export async function pickupAction(
     `${assetId} picked up by CoolTech`,
     { kind: "pickup", asset_id: assetId }
   );
+  revalidateAll();
+  return { ok: true };
+}
+
+/** Update an asset's editable details. Admin or owning branch manager. */
+export async function updateAssetAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  const assetId = String(formData.get("asset_id") || "");
+  const admin = supabaseAdmin();
+  const { data: asset } = await admin
+    .from("assets")
+    .select("*")
+    .eq("id", assetId)
+    .maybeSingle();
+  if (!asset) return { error: "Asset not found." };
+  const a = asset as Asset;
+
+  const canEdit =
+    profile.role === "admin" ||
+    (profile.role === "branch_manager" && profile.branch_code === a.current_branch);
+  if (!canEdit)
+    return { error: "Only Admin or the owning branch manager can edit this asset." };
+
+  const room = String(formData.get("room") || "").trim();
+  const installed_date = String(formData.get("installed_date") || "") || null;
+  const last_service_date = String(formData.get("last_service_date") || "") || null;
+  const expected_life_years =
+    Number(formData.get("expected_life_years")) || a.expected_life_years;
+  const service_interval_days =
+    Number(formData.get("service_interval_days")) || a.service_interval_days;
+
+  const { error } = await admin
+    .from("assets")
+    .update({
+      room: room || "store",
+      installed_date,
+      last_service_date,
+      expected_life_years,
+      service_interval_days,
+    })
+    .eq("id", assetId);
+  if (error) return { error: error.message };
+
+  await admin.from("asset_events").insert({
+    asset_id: assetId,
+    kind: "note",
+    description: `Details updated — room ${room || "store"}, life ${expected_life_years}y, service every ${service_interval_days}d`,
+    actor_name: actorName(profile),
+  });
   revalidateAll();
   return { ok: true };
 }

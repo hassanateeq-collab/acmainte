@@ -3,6 +3,7 @@ import { supabaseAdmin } from "./supabase/admin";
 import type {
   Asset,
   AssetEvent,
+  AssetType,
   Branch,
   Job,
   JobCharge,
@@ -18,6 +19,22 @@ export async function listBranches(): Promise<Branch[]> {
     .select("*")
     .order("sort");
   return (data as Branch[]) ?? [];
+}
+
+const DEFAULT_TYPES: AssetType[] = [
+  { code: "AC", name: "Air conditioner", has_parts: true, sort: 1 },
+];
+
+/** Asset types (admin-managed). Falls back to a default AC type if the
+ *  asset_types table hasn't been created yet. */
+export async function listAssetTypes(): Promise<AssetType[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("asset_types")
+    .select("*")
+    .order("sort")
+    .order("name");
+  if (error || !data || data.length === 0) return DEFAULT_TYPES;
+  return data as AssetType[];
 }
 
 export async function listAssets(): Promise<Asset[]> {

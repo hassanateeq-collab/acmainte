@@ -4,14 +4,16 @@ import { useActionState, useState } from "react";
 import Modal from "@/components/Modal";
 import { createAssetAction, type ActionState } from "@/app/actions/assets";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./bits";
-import type { Branch, Profile } from "@/lib/types";
+import type { AssetType, Branch, Profile } from "@/lib/types";
 
 export default function AddAssetForm({
   branches,
   profile,
+  types,
 }: {
   branches: Branch[];
   profile: Profile;
+  types: AssetType[];
 }) {
   const lockedBranch =
     profile.role === "branch_manager" ? profile.branch_code : null;
@@ -24,7 +26,7 @@ export default function AddAssetForm({
       subtitle="Register a new unit. The ID sticker stays with it for life."
     >
       {(close) => (
-        <Inner branches={branches} lockedBranch={lockedBranch} close={close} />
+        <Inner branches={branches} lockedBranch={lockedBranch} types={types} close={close} />
       )}
     </Modal>
   );
@@ -33,10 +35,12 @@ export default function AddAssetForm({
 function Inner({
   branches,
   lockedBranch,
+  types,
   close,
 }: {
   branches: Branch[];
   lockedBranch: string | null;
+  types: AssetType[];
   close: () => void;
 }) {
   const [state, action] = useActionState<ActionState, FormData>(
@@ -45,13 +49,15 @@ function Inner({
   );
   useOnSuccess(state, close);
 
-  const [type, setType] = useState("AC");
+  const [typeCode, setTypeCode] = useState(types[0]?.code || "AC");
   const [part, setPart] = useState("I");
   const [branch, setBranch] = useState(lockedBranch || branches[0]?.code || "");
   const [customId, setCustomId] = useState("");
 
-  const partSeg = type === "AC" ? `-${part}` : "";
-  const autoPattern = branch ? `${type}-${branch}${partSeg}-###` : "—";
+  const selectedType = types.find((t) => t.code === typeCode) ?? types[0];
+  const hasParts = !!selectedType?.has_parts;
+  const partSeg = hasParts ? `-${part}` : "";
+  const autoPattern = branch ? `${typeCode}-${branch}${partSeg}-###` : "—";
   const idPreview = customId.trim() ? customId.trim().toUpperCase() : autoPattern;
 
   return (
@@ -63,13 +69,17 @@ function Inner({
           <select
             name="type"
             className="select"
-            value={type}
-            onChange={(e) => setType(e.target.value)}
+            value={typeCode}
+            onChange={(e) => setTypeCode(e.target.value)}
           >
-            <option value="AC">AC — Air conditioner</option>
+            {types.map((t) => (
+              <option key={t.code} value={t.code}>
+                {t.code} — {t.name}
+              </option>
+            ))}
           </select>
         </Field>
-        {type === "AC" && (
+        {hasParts && (
           <Field label="Part">
             <select
               name="part"
@@ -130,7 +140,7 @@ function Inner({
         <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
           {customId.trim()
             ? "Using your custom ID (must be unique)."
-            : "Leave the field above blank and the three-digit number is assigned in sequence when you save."}
+            : "Leave the field above blank and the trailing number is assigned in sequence when you save."}
         </div>
       </div>
 
