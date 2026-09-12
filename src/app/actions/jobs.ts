@@ -29,7 +29,7 @@ export async function logJobAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  const assetId = String(formData.get("asset_id") || "");
+  const assetId = String(formData.get("asset_id") || "").trim();
   const type = String(formData.get("type") || "Service");
   const date = String(formData.get("date") || "") || new Date().toISOString().slice(0, 10);
   const problem = String(formData.get("problem") || "").trim() || null;
@@ -41,7 +41,12 @@ export async function logJobAction(
     return { error: "Choose Service or Repair." };
 
   const asset = await getAsset(assetId);
-  if (!asset) return { error: "Asset not found." };
+  if (!asset)
+    return {
+      error: assetId
+        ? `Asset "${assetId}" not found — refresh the page and try again.`
+        : "No asset id received — refresh the page and try again.",
+    };
   if (!canLog(profile.role, profile.branch_code, asset))
     return { error: "You cannot log a job on this asset." };
 
