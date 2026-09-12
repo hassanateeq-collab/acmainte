@@ -24,7 +24,8 @@ function progressOf(a: Asset): { done: boolean; label: string; note?: string } {
 export default async function ServicePage() {
   const profile = await requireProfile();
   const [assets, jobs] = await Promise.all([listAssets(), listAllJobs()]);
-  const isVendor = profile.role === "repair" || profile.role === "admin";
+  // Admin or a branch manager (of the rows they see) can mark a service done.
+  const canMark = profile.role === "admin" || profile.role === "branch_manager";
 
   const inScope =
     profile.role === "branch_manager"
@@ -47,7 +48,7 @@ export default async function ServicePage() {
 
   const soon = withDays.filter((x) => x.d! <= 30);
   const later = withDays.filter((x) => x.d! > 30);
-  const canPickup = profile.role === "repair" || profile.role === "admin";
+  const canPickup = profile.role === "admin" || profile.role === "branch_manager";
 
   const renderTable = (rows: { a: Asset; d: number | null }[], empty: string) => (
     <div className="card table-wrap" style={{ marginBottom: 24 }}>
@@ -88,8 +89,7 @@ export default async function ServicePage() {
                 <td style={{ maxWidth: 220, color: "var(--muted)", fontSize: 13 }}>{m?.lastProblem ?? "—"}</td>
                 <td>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    {/* Only the repair company (or admin) completes a service. */}
-                    {isVendor && !prog.done && (
+                    {canMark && !prog.done && (
                       <QuickComplete assetId={a.id} kind="Service" label="✓ Mark serviced" />
                     )}
                     <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
@@ -107,12 +107,8 @@ export default async function ServicePage() {
   return (
     <div>
       <PageHeader
-        title={profile.role === "repair" ? "Service due" : "Service & repairs"}
-        subtitle={
-          isVendor
-            ? "Units approaching their next service, soonest first. Mark a service done, or pick a unit up for the workshop."
-            : "Units approaching their next service, soonest first. Progress is updated by CoolTech."
-        }
+        title="Service & repairs"
+        subtitle="Units approaching their next service, soonest first. Mark a service done, or send a unit to CoolTech for the workshop."
       />
       <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>Due within 30 days</h2>
       {renderTable(soon, "Nothing due in the next 30 days.")}

@@ -7,18 +7,7 @@ export type NavItem = {
 };
 
 export function navFor(role: Role): NavItem[] {
-  if (role === "repair") {
-    return [
-      { href: "/", label: "Home" },
-      { href: "/service", label: "Service due" },
-      { href: "/issues", label: "Issues & pickups" },
-      { href: "/assets", label: "All ACs" },
-      { href: "/move", label: "Move history" },
-      { href: "/bills", label: "Bills" },
-      { href: "/notifications", label: "Notifications", badgeKey: "notifications" },
-    ];
-  }
-  // admin + branch_manager
+  // admin + branch_manager (the repair role has been removed)
   const items: NavItem[] = [
     { href: "/", label: "Home" },
     { href: "/rooms", label: "Rooms" },

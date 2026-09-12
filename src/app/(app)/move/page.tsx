@@ -34,7 +34,6 @@ export default async function MovePage() {
   const branchName = (code: string) =>
     branches.find((b) => b.code === code)?.name ?? code;
 
-  const isRepair = profile.role === "repair";
   const myBranch = profile.branch_code;
 
   // Assets that already have an open request — don't offer them again.
@@ -42,126 +41,10 @@ export default async function MovePage() {
     transfers.filter((t) => t.status === "waiting").map((t) => t.asset_id)
   );
 
-  // Moves accepted but not yet installed by CoolTech.
+  // Moves accepted but not yet installed by the receiving branch.
   const awaitingInstall = transfers.filter(
     (t) => t.status === "accepted" && !t.installed
   );
-  const pendingRoomFor = new Map(
-    awaitingInstall.map((t) => [t.asset_id, t.to_room ?? ""])
-  );
-
-  /* ---------------------------------------------------------------- repair */
-  if (isRepair) {
-    const moves = transfers
-      .slice()
-      .sort((a, b) => (a.requested_at < b.requested_at ? 1 : -1));
-    return (
-      <div>
-        <PageHeader
-          title="Movement history"
-          subtitle="Where every part came from, where it is now, and where it's installed."
-        />
-
-        {/* To install */}
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>
-          To install
-          {awaitingInstall.length > 0 && (
-            <span style={{ marginLeft: 8 }}><Tag tone="amber">{awaitingInstall.length}</Tag></span>
-          )}
-        </h2>
-        <div className="card table-wrap" style={{ marginBottom: 24 }}>
-          <table className="data">
-            <thead>
-              <tr><th>Part</th><th>Moved to</th><th>Install in room</th><th>Requested by</th><th>Accepted</th><th></th></tr>
-            </thead>
-            <tbody>
-              {awaitingInstall.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>Nothing waiting to be installed.</td></tr>
-              )}
-              {awaitingInstall.map((t) => (
-                <tr key={t.id}>
-                  <td><Link href={`/assets/${t.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{t.asset_id}</Link></td>
-                  <td>{t.to_branch} · {branchName(t.to_branch)}</td>
-                  <td style={{ fontWeight: 600 }}>{t.to_room ? `Room ${t.to_room}` : "—"}</td>
-                  <td>{t.requested_by_name ?? "—"}</td>
-                  <td>{fmtDateTime(t.decided_at)}</td>
-                  <td><MarkInstalled transferId={t.id} room={t.to_room} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>Where each part is now</h2>
-        <div className="card table-wrap" style={{ marginBottom: 24 }}>
-          <table className="data">
-            <thead>
-              <tr><th>Part</th><th>Type</th><th>Home branch</th><th>Current branch</th><th>Installed</th><th>Paired</th></tr>
-            </thead>
-            <tbody>
-              {assets.map((a) => (
-                <tr key={a.id}>
-                  <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
-                  <td>{partLabel(a)}</td>
-                  <td>{a.home_branch}</td>
-                  <td>
-                    {a.current_branch}
-                    {a.current_branch !== a.home_branch && (
-                      <span style={{ marginLeft: 6 }}><Tag tone="amber">Moved from {a.home_branch}</Tag></span>
-                    )}
-                  </td>
-                  <td>
-                    {a.at_vendor ? (
-                      "With CoolTech"
-                    ) : pendingRoomFor.has(a.id) ? (
-                      <span style={{ color: "#92400e" }}>
-                        To install · Room {pendingRoomFor.get(a.id) || "?"}
-                      </span>
-                    ) : (
-                      roomLabel(a)
-                    )}
-                  </td>
-                  <td>{a.paired_with ? a.paired_with : "—"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>Move log</h2>
-        <div className="card table-wrap">
-          <table className="data">
-            <thead>
-              <tr><th>Part</th><th>From → To</th><th>Reason</th><th>Outcome</th><th>Requested by</th><th>When</th></tr>
-            </thead>
-            <tbody>
-              {moves.length === 0 && (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>No moves recorded yet.</td></tr>
-              )}
-              {moves.map((t) => (
-                <tr key={t.id}>
-                  <td><Link href={`/assets/${t.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{t.asset_id}</Link></td>
-                  <td>{t.from_branch} → {t.to_branch}</td>
-                  <td style={{ maxWidth: 240, color: "var(--muted)", fontSize: 13 }}>{t.reason}</td>
-                  <td>
-                    {t.status === "accepted" ? (
-                      t.installed ? <Tag tone="brand">Moved</Tag> : <Tag tone="amber">Waiting for installation</Tag>
-                    ) : t.status === "declined" ? (
-                      <Tag>Declined</Tag>
-                    ) : (
-                      <Tag tone="amber">Waiting</Tag>
-                    )}
-                  </td>
-                  <td>{t.requested_by_name ?? "—"}</td>
-                  <td>{fmtDateTime(t.requested_at)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  }
 
   /* ------------------------------------------------ admin + branch manager */
 
@@ -276,7 +159,7 @@ export default async function MovePage() {
         </>
       )}
 
-      {/* Accepted, awaiting CoolTech to install */}
+      {/* Accepted, waiting for the receiving branch to confirm installation */}
       {(() => {
         const mine = awaitingInstall.filter(
           (t) => profile.role === "admin" || t.to_branch === myBranch
@@ -284,22 +167,38 @@ export default async function MovePage() {
         if (mine.length === 0) return null;
         return (
           <>
-            <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>Awaiting installation</h2>
+            <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>
+              To install
+              <span style={{ marginLeft: 8 }}><Tag tone="amber">{mine.length}</Tag></span>
+            </h2>
+            <div className="card" style={{ padding: "10px 14px", marginBottom: 10, fontSize: 13, color: "var(--muted)" }}>
+              Confirm each unit once it&apos;s physically fitted in its room.
+            </div>
             <div className="card table-wrap" style={{ marginBottom: 24 }}>
               <table className="data">
                 <thead>
-                  <tr><th>Part</th><th>Moved to</th><th>Install room</th><th>Accepted</th><th>Status</th></tr>
+                  <tr><th>Part</th><th>Moved to</th><th>Install room</th><th>Accepted</th><th></th></tr>
                 </thead>
                 <tbody>
-                  {mine.map((t) => (
-                    <tr key={t.id}>
-                      <td><Link href={`/assets/${t.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{t.asset_id}</Link></td>
-                      <td>{t.to_branch}</td>
-                      <td style={{ fontWeight: 600 }}>{t.to_room ? `Room ${t.to_room}` : "—"}</td>
-                      <td>{fmtDateTime(t.decided_at)}</td>
-                      <td><Tag tone="amber">CoolTech to install</Tag></td>
-                    </tr>
-                  ))}
+                  {mine.map((t) => {
+                    const canInstall =
+                      profile.role === "admin" || t.to_branch === myBranch;
+                    return (
+                      <tr key={t.id}>
+                        <td><Link href={`/assets/${t.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{t.asset_id}</Link></td>
+                        <td>{t.to_branch}</td>
+                        <td style={{ fontWeight: 600 }}>{t.to_room ? `Room ${t.to_room}` : "—"}</td>
+                        <td>{fmtDateTime(t.decided_at)}</td>
+                        <td>
+                          {canInstall ? (
+                            <MarkInstalled transferId={t.id} room={t.to_room} />
+                          ) : (
+                            <Tag tone="amber">Awaiting {t.to_branch}</Tag>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

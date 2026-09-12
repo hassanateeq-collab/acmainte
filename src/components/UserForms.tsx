@@ -32,7 +32,6 @@ function AddInner({ branches, close }: { branches: Branch[]; close: () => void }
           <select name="role" className="select" value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="admin">Admin (head office)</option>
             <option value="branch_manager">Branch manager</option>
-            <option value="repair">CoolTech (repair)</option>
           </select>
         </Field>
         <Field label="Branch">
@@ -76,7 +75,6 @@ function EditInner({ person, branches, close }: { person: Profile; branches: Bra
           <select name="role" className="select" value={role} onChange={(e) => setRole(e.target.value as Profile["role"])}>
             <option value="admin">Admin (head office)</option>
             <option value="branch_manager">Branch manager</option>
-            <option value="repair">CoolTech (repair)</option>
           </select>
         </Field>
         <Field label="Branch">

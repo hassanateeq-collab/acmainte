@@ -32,7 +32,6 @@ export default function AssetActions({
   branches: Branch[];
   candidates: Asset[]; // opposite-part assets available to pair
 }) {
-  const isRepair = profile.role === "repair";
   const isAdmin = profile.role === "admin";
   const ownsBranch =
     isAdmin ||
@@ -48,15 +47,15 @@ export default function AssetActions({
   const serviceDueNow = dts !== null && dts <= 0; // actually due / overdue
   const hasIssue = !!asset.open_issue;
   const atVendor = asset.at_vendor;
-  const canComplete = isRepair || ownsBranch;
+  const canComplete = ownsBranch;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-      {!isRepair && (
+      {ownsBranch && (
         <Modal
           triggerLabel="Report an issue"
           title={`Report an issue — ${asset.id}`}
-          subtitle="CoolTech and Admin are notified. The unit shows 'Issue reported' until a repair is logged."
+          subtitle="Admin is notified. The unit shows 'Issue reported' until a repair is logged."
         >
           {(close) => <ReportIssue assetId={asset.id} close={close} />}
         </Modal>
@@ -89,7 +88,7 @@ export default function AssetActions({
         </span>
       )}
 
-      {(isAdmin || isRepair) && (
+      {isAdmin && (
         <Modal
           triggerLabel="Add charge"
           title={`Add a standalone charge — ${asset.id}`}
@@ -111,7 +110,7 @@ export default function AssetActions({
         </Modal>
       )}
 
-      {!isRepair && atHome && (
+      {ownsBranch && atHome && (
         <Modal
           triggerLabel="Request transfer"
           title={`Request transfer — ${asset.id}`}
@@ -123,7 +122,7 @@ export default function AssetActions({
         </Modal>
       )}
 
-      {(isRepair || isAdmin) && !asset.at_vendor && (
+      {ownsBranch && !asset.at_vendor && (
         <PickupButton assetId={asset.id} />
       )}
 

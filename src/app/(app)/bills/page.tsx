@@ -41,10 +41,9 @@ export default async function BillsPage({
     0
   );
   const grand = totalBill + totalAdd;
-  // CoolTech (repair) adds and edits charges; Admin does everything + audit.
-  // Branch managers view only.
-  const canAdd = profile.role === "admin" || profile.role === "repair";
-  const canEdit = profile.role === "admin" || profile.role === "repair";
+  // Admin manages all charges + audit. Branch managers view only.
+  const canAdd = profile.role === "admin";
+  const canEdit = profile.role === "admin";
   const showActions = canAdd || canEdit;
 
   const chargeAssets = assets.map((a) => ({ id: a.id, branch: a.current_branch }));

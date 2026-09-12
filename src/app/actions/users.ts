@@ -6,7 +6,7 @@ import { revalidateAll } from "@/lib/revalidate";
 import type { ActionState } from "./assets";
 import type { Role } from "@/lib/types";
 
-const ROLES: Role[] = ["admin", "branch_manager", "repair"];
+const ROLES: Role[] = ["admin", "branch_manager"];
 
 export async function createUserAction(
   _prev: ActionState,

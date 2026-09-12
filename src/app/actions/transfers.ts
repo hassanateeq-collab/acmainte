@@ -161,9 +161,6 @@ export async function markInstalledAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "repair" || profile.role === "admin"))
-    return { error: "Only CoolTech (or Admin) can mark a unit installed." };
-
   const transferId = String(formData.get("transfer_id") || "");
   const admin = supabaseAdmin();
   const { data: t } = await admin
@@ -173,6 +170,16 @@ export async function markInstalledAction(
     .maybeSingle();
   if (!t) return { error: "Move record not found." };
   const transfer = t as Transfer;
+
+  // The branch manager receiving the part (or Admin) confirms installation.
+  if (
+    !(
+      profile.role === "admin" ||
+      (profile.role === "branch_manager" && profile.branch_code === transfer.to_branch)
+    )
+  )
+    return { error: "Only the receiving branch manager (or Admin) can mark a unit installed." };
+
   if (transfer.status !== "accepted")
     return { error: "This move hasn't been accepted yet." };
   if (transfer.installed) return { error: "Already marked installed." };

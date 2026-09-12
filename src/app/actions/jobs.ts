@@ -18,7 +18,7 @@ async function getAsset(id: string): Promise<Asset | null> {
   return (data as Asset) ?? null;
 }
 function canLog(role: string, branch: string | null, asset: Asset) {
-  if (role === "admin" || role === "repair") return true;
+  if (role === "admin") return true;
   if (role === "branch_manager") return branch === asset.current_branch;
   return false;
 }
@@ -90,8 +90,8 @@ export async function addChargeAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "admin" || profile.role === "repair"))
-    return { error: "Only Admin or CoolTech can add charges." };
+  if (profile.role !== "admin")
+    return { error: "Only Admin can add charges." };
 
   const assetId = String(formData.get("asset_id") || "");
   const jobId = String(formData.get("job_id") || "");
@@ -148,8 +148,8 @@ export async function editJobAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "admin" || profile.role === "repair"))
-    return { error: "Only CoolTech or Admin can change a bill." };
+  if (profile.role !== "admin")
+    return { error: "Only Admin can change a bill." };
 
   const jobId = String(formData.get("job_id") || "");
   const reason = String(formData.get("reason") || "").trim();
@@ -199,8 +199,8 @@ export async function deleteJobAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "admin" || profile.role === "repair"))
-    return { error: "Only CoolTech or Admin can delete a bill." };
+  if (profile.role !== "admin")
+    return { error: "Only Admin can delete a bill." };
 
   const jobId = String(formData.get("job_id") || "");
   const reason = String(formData.get("reason") || "").trim();

@@ -18,7 +18,7 @@ export default async function IssuesPage() {
 
   const reported = inScope.filter((a) => a.open_issue && !a.at_vendor);
   const workshop = inScope.filter((a) => a.at_vendor);
-  const canPickup = profile.role === "repair" || profile.role === "admin";
+  const canPickup = profile.role === "admin" || profile.role === "branch_manager";
 
   return (
     <div>

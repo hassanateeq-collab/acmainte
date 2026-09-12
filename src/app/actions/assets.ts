@@ -291,9 +291,6 @@ export async function pickupAction(
   formData: FormData
 ): Promise<ActionState> {
   const profile = await requireProfile();
-  if (!(profile.role === "repair" || isAdmin(profile)))
-    return { error: "Only CoolTech (or Admin) can pick up a unit." };
-
   const assetId = String(formData.get("asset_id") || "");
   const admin = supabaseAdmin();
   const { data: asset } = await admin
@@ -302,6 +299,14 @@ export async function pickupAction(
     .eq("id", assetId)
     .maybeSingle();
   if (!asset) return { error: "Asset not found." };
+  if (
+    !(
+      isAdmin(profile) ||
+      (profile.role === "branch_manager" &&
+        profile.branch_code === (asset as Asset).current_branch)
+    )
+  )
+    return { error: "Only Admin or the owning branch manager can send a unit to CoolTech." };
 
   await admin.from("assets").update({ at_vendor: true }).eq("id", assetId);
   await admin.from("asset_events").insert({
