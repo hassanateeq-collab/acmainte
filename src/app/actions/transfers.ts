@@ -98,10 +98,17 @@ export async function decideTransferAction(
   if (decision === "accept") {
     // The part moves branches but is not installed yet — it sits in the store
     // and its spare label is cleared. CoolTech installs it into the room.
-    await admin
+    // Do this FIRST and abort if it fails, so the transfer can't be marked
+    // accepted while the asset stays at its old branch.
+    const { error: moveErr } = await admin
       .from("assets")
       .update({ current_branch: transfer.to_branch, room: "store", is_spare: false })
       .eq("id", transfer.asset_id);
+    if (moveErr) {
+      return {
+        error: `Could not move the asset: ${moveErr.message}. If this mentions a missing column, run the latest SQL migration on the database.`,
+      };
+    }
     await admin.from("asset_events").insert({
       asset_id: transfer.asset_id,
       kind: "moved",
@@ -171,7 +178,8 @@ export async function markInstalledAction(
 
   await admin
     .from("assets")
-    .update({ room, is_spare: false })
+    // Re-assert the destination branch too, in case the accept step didn't land.
+    .update({ room, is_spare: false, current_branch: transfer.to_branch })
     .eq("id", transfer.asset_id);
 
   const { error: markErr } = await admin
