@@ -10,23 +10,39 @@ export default function AddAssetForm({
   branches,
   profile,
   types,
+  defaultBranch,
+  defaultRoom,
+  triggerLabel = "+ Add asset",
+  triggerClassName = "btn btn-primary",
 }: {
   branches: Branch[];
   profile: Profile;
   types: AssetType[];
+  defaultBranch?: string | null;
+  defaultRoom?: string | null;
+  triggerLabel?: React.ReactNode;
+  triggerClassName?: string;
 }) {
+  // Lock the branch when adding from a room, or for a branch manager.
   const lockedBranch =
-    profile.role === "branch_manager" ? profile.branch_code : null;
+    defaultBranch ??
+    (profile.role === "branch_manager" ? profile.branch_code : null);
 
   return (
     <Modal
-      triggerLabel="+ Add asset"
-      triggerClassName="btn btn-primary"
+      triggerLabel={triggerLabel}
+      triggerClassName={triggerClassName}
       title="Add an asset"
       subtitle="Register a new unit. The ID sticker stays with it for life."
     >
       {(close) => (
-        <Inner branches={branches} lockedBranch={lockedBranch} types={types} close={close} />
+        <Inner
+          branches={branches}
+          lockedBranch={lockedBranch}
+          types={types}
+          defaultRoom={defaultRoom ?? null}
+          close={close}
+        />
       )}
     </Modal>
   );
@@ -36,11 +52,13 @@ function Inner({
   branches,
   lockedBranch,
   types,
+  defaultRoom,
   close,
 }: {
   branches: Branch[];
   lockedBranch: string | null;
   types: AssetType[];
+  defaultRoom: string | null;
   close: () => void;
 }) {
   const [state, action] = useActionState<ActionState, FormData>(
@@ -112,7 +130,12 @@ function Inner({
           </select>
         </Field>
         <Field label="Room (blank = store / spare)">
-          <input name="room" className="input" placeholder="e.g. 204 or store" />
+          <input
+            name="room"
+            className="input"
+            placeholder="e.g. 204 or store"
+            defaultValue={defaultRoom ?? undefined}
+          />
         </Field>
       </Row>
 

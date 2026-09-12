@@ -11,6 +11,15 @@ export type AssetType = {
   sort: number;
 };
 
+export type Room = {
+  id: string;
+  branch_code: string;
+  room_number: string;
+  status: string | null;
+  status_note: string | null;
+  sort: number;
+};
+
 export type Profile = {
   id: string;
   email: string | null;

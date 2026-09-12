@@ -20,6 +20,7 @@ export function navFor(role: Role): NavItem[] {
   // admin + branch_manager
   const items: NavItem[] = [
     { href: "/", label: "Home" },
+    { href: "/rooms", label: "Rooms" },
     { href: "/assets", label: "Assets" },
     { href: "/transfers", label: "Transfers", badgeKey: "transfers" },
     { href: "/service", label: "Service & repairs" },

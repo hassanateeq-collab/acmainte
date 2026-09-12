@@ -47,6 +47,19 @@ insert into public.asset_types (code, name, has_parts, sort) values
 on conflict (code) do nothing;
 alter table public.asset_types enable row level security;
 
+-- --- Rooms (persistent room list; ACs attach by branch + room number) --------
+create table if not exists public.rooms (
+  id uuid primary key default gen_random_uuid(),
+  branch_code text not null references public.branches(code),
+  room_number text not null,
+  status text,
+  status_note text,
+  sort int not null default 0,
+  created_at timestamptz not null default now(),
+  unique (branch_code, room_number)
+);
+alter table public.rooms enable row level security;
+
 -- --- Profiles (one row per auth user) ----------------------------------------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,

@@ -10,8 +10,21 @@ import type {
   JobEdit,
   Notification,
   Profile,
+  Room,
   Transfer,
 } from "./types";
+
+/** Persistent rooms list. Returns [] if the rooms table isn't created yet. */
+export async function listRooms(): Promise<Room[]> {
+  const { data, error } = await supabaseAdmin()
+    .from("rooms")
+    .select("*")
+    .order("branch_code")
+    .order("sort")
+    .order("room_number");
+  if (error || !data) return [];
+  return data as Room[];
+}
 
 export async function listBranches(): Promise<Branch[]> {
   const { data } = await supabaseAdmin()

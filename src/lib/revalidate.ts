@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 export function revalidateAll() {
   for (const p of [
     "/",
+    "/rooms",
     "/assets",
     "/transfers",
     "/service",
