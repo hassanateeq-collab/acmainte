@@ -15,7 +15,8 @@ import EditAsset from "./EditAsset";
 import QuickComplete from "./QuickComplete";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
-import { daysToService } from "@/lib/status";
+import { daysToService, nextServiceDate } from "@/lib/status";
+import { fmtDate } from "@/lib/format";
 import type { Asset, Branch, Profile } from "@/lib/types";
 
 export default function AssetActions({
@@ -37,7 +38,8 @@ export default function AssetActions({
 
   // Quick "mark done" only makes sense when there's something to complete.
   const dts = daysToService(asset);
-  const serviceDue = dts !== null && dts <= 14; // matches the "Service due" status window
+  const nsd = nextServiceDate(asset);
+  const serviceDueNow = dts !== null && dts <= 0; // actually due / overdue
   const hasIssue = !!asset.open_issue;
   const atVendor = asset.at_vendor;
   const canComplete = isRepair || ownsBranch;
@@ -63,11 +65,22 @@ export default function AssetActions({
         {(close) => <LogJob assetId={asset.id} close={close} />}
       </Modal>
 
-      {canComplete && (serviceDue || atVendor) && (
+      {canComplete && (serviceDueNow || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Service" />
       )}
       {canComplete && (hasIssue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Repair" />
+      )}
+
+      {/* When service isn't due, show when it next is. */}
+      {!serviceDueNow && !atVendor && nsd && (
+        <span
+          className="chip"
+          style={{ background: "#eef6ff", color: "#1e3a8a" }}
+        >
+          Next service: {fmtDate(nsd.toISOString())}
+          {dts !== null ? ` · in ${dts} day${dts === 1 ? "" : "s"}` : ""}
+        </span>
       )}
 
       {(isAdmin || isRepair) && (
