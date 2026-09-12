@@ -72,7 +72,7 @@ export async function createAssetAction(
   )
     return { error: "You can only add assets to your own branch." };
 
-  const customId = String(formData.get("custom_id") || "").trim().toUpperCase();
+  const idNumber = String(formData.get("id_number") || "").trim().toUpperCase();
 
   const insertRow = (id: string, seq: number) =>
     supabaseAdmin().from("assets").insert({
@@ -104,20 +104,23 @@ export async function createAssetAction(
     revalidateAll();
   }
 
-  // If the user typed a custom ID, use it verbatim (must be unique).
-  if (customId) {
-    if (!/^[A-Z0-9][A-Z0-9-]*$/.test(customId))
-      return { error: "ID can use letters, numbers and dashes only (e.g. AC-FSL-I-204)." };
+  // If the user typed a number, build the ID from the selections + that number.
+  // e.g. type AC + branch FSL + part I + number "204" -> AC-FSL-I-204.
+  if (idNumber) {
+    if (!/^[A-Z0-9]+$/.test(idNumber))
+      return { error: "Number can use digits and letters only (e.g. 204 or 104A)." };
+    const numSeg = /^\d+$/.test(idNumber) ? idNumber.padStart(3, "0") : idNumber;
+    const finalId = `${type}-${home_branch}${part ? `-${part}` : ""}-${numSeg}`;
     const { data: dup } = await supabaseAdmin()
       .from("assets")
       .select("id")
-      .eq("id", customId)
+      .eq("id", finalId)
       .maybeSingle();
-    if (dup) return { error: `An asset with ID ${customId} already exists.` };
+    if (dup) return { error: `An asset with ID ${finalId} already exists.` };
     const { seq } = await buildNextId(type, home_branch, part);
-    const { error } = await insertRow(customId, seq);
+    const { error } = await insertRow(finalId, seq);
     if (error) return { error: error.message };
-    await afterInsert(customId);
+    await afterInsert(finalId);
     return { ok: true };
   }
 

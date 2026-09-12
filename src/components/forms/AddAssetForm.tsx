@@ -52,13 +52,14 @@ function Inner({
   const [typeCode, setTypeCode] = useState(types[0]?.code || "AC");
   const [part, setPart] = useState("I");
   const [branch, setBranch] = useState(lockedBranch || branches[0]?.code || "");
-  const [customId, setCustomId] = useState("");
+  const [num, setNum] = useState("");
 
   const selectedType = types.find((t) => t.code === typeCode) ?? types[0];
   const hasParts = !!selectedType?.has_parts;
   const partSeg = hasParts ? `-${part}` : "";
-  const autoPattern = branch ? `${typeCode}-${branch}${partSeg}-###` : "—";
-  const idPreview = customId.trim() ? customId.trim().toUpperCase() : autoPattern;
+  const raw = num.trim().toUpperCase();
+  const numSeg = raw ? (/^\d+$/.test(raw) ? raw.padStart(3, "0") : raw) : "###";
+  const idPreview = branch ? `${typeCode}-${branch}${partSeg}-${numSeg}` : "—";
 
   return (
     <form action={action}>
@@ -115,14 +116,14 @@ function Inner({
         </Field>
       </Row>
 
-      <Field label="Custom ID (optional — leave blank to auto-number)">
+      <Field label="Number (leave blank to auto-assign)">
         <input
-          name="custom_id"
+          name="id_number"
           className="input"
-          value={customId}
-          onChange={(e) => setCustomId(e.target.value)}
-          placeholder={autoPattern}
-          autoCapitalize="characters"
+          value={num}
+          onChange={(e) => setNum(e.target.value)}
+          placeholder="e.g. 204"
+          inputMode="numeric"
         />
       </Field>
 
@@ -138,9 +139,9 @@ function Inner({
       >
         ID it will get: <strong style={{ letterSpacing: 0.3 }}>{idPreview}</strong>
         <div style={{ color: "var(--muted)", fontSize: 12, marginTop: 2 }}>
-          {customId.trim()
-            ? "Using your custom ID (must be unique)."
-            : "Leave the field above blank and the trailing number is assigned in sequence when you save."}
+          Type ({typeCode}), branch ({branch || "—"}) and part are set from your
+          choices above — you only enter the number. Leave it blank to auto-assign
+          the next one.
         </div>
       </div>
 
