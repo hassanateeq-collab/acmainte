@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { logJobAction } from "@/app/actions/jobs";
 import type { ActionState } from "@/app/actions/assets";
@@ -21,7 +21,10 @@ export default function QuickComplete({
 }) {
   const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
   const router = useRouter();
-  if (state?.ok) router.refresh();
+  useEffect(() => {
+    if (state?.ok) router.refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
   const today = new Date().toISOString().slice(0, 10);
 
   return (
