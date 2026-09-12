@@ -15,6 +15,7 @@ import EditAsset from "./EditAsset";
 import QuickComplete from "./QuickComplete";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
+import { daysToService } from "@/lib/status";
 import type { Asset, Branch, Profile } from "@/lib/types";
 
 export default function AssetActions({
@@ -33,6 +34,13 @@ export default function AssetActions({
   const ownsBranch =
     isAdmin ||
     (profile.role === "branch_manager" && profile.branch_code === asset.current_branch);
+
+  // Quick "mark done" only makes sense when there's something to complete.
+  const dts = daysToService(asset);
+  const serviceDue = dts !== null && dts <= 14; // matches the "Service due" status window
+  const hasIssue = !!asset.open_issue;
+  const atVendor = asset.at_vendor;
+  const canComplete = isRepair || ownsBranch;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -55,8 +63,12 @@ export default function AssetActions({
         {(close) => <LogJob assetId={asset.id} close={close} />}
       </Modal>
 
-      {(isRepair || ownsBranch) && <QuickComplete assetId={asset.id} kind="Service" />}
-      {(isRepair || ownsBranch) && <QuickComplete assetId={asset.id} kind="Repair" />}
+      {canComplete && (serviceDue || atVendor) && (
+        <QuickComplete assetId={asset.id} kind="Service" />
+      )}
+      {canComplete && (hasIssue || atVendor) && (
+        <QuickComplete assetId={asset.id} kind="Repair" />
+      )}
 
       {(isAdmin || isRepair) && (
         <Modal
