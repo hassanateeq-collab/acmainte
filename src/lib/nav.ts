@@ -13,6 +13,7 @@ export function navFor(role: Role): NavItem[] {
       { href: "/service", label: "Service due" },
       { href: "/issues", label: "Issues & pickups" },
       { href: "/assets", label: "All ACs" },
+      { href: "/move", label: "Move history" },
       { href: "/bills", label: "Bills" },
       { href: "/notifications", label: "Notifications", badgeKey: "notifications" },
     ];
@@ -22,7 +23,7 @@ export function navFor(role: Role): NavItem[] {
     { href: "/", label: "Home" },
     { href: "/rooms", label: "Rooms" },
     { href: "/assets", label: "Assets" },
-    { href: "/transfers", label: "Transfers", badgeKey: "transfers" },
+    { href: "/move", label: "Move", badgeKey: "transfers" },
     { href: "/service", label: "Service & repairs" },
     { href: "/bills", label: "Bills" },
     { href: "/notifications", label: "Notifications", badgeKey: "notifications" },
