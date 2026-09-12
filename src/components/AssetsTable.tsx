@@ -178,9 +178,7 @@ export default function AssetsTable({
                       <StatusBadge status={r.exterior.status} />
                     </Link>
                   ) : (
-                    <span style={{ color: "var(--muted)" }}>
-                      {r.interior ? "Not connected" : "—"}
-                    </span>
+                    <span style={{ color: "var(--muted)" }}>—</span>
                   )}
                 </td>
                 <td>{fmtDate(r.nextService)}</td>
