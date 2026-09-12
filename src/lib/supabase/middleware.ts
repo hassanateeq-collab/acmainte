@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
     path === "/login" ||
     path.startsWith("/_next") ||
     path.startsWith("/favicon") ||
-    path.startsWith("/api/health");
+    path.startsWith("/api/health") ||
+    path.startsWith("/api/debug");
 
   // Redirect unauthenticated users to /login, carrying the refreshed cookies.
   // (We deliberately do NOT redirect authenticated users away from /login here
