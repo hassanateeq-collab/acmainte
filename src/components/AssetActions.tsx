@@ -1,0 +1,294 @@
+"use client";
+
+import { useActionState } from "react";
+import Modal from "@/components/Modal";
+import {
+  reportIssueAction,
+  changePairingAction,
+  pickupAction,
+  type ActionState,
+} from "@/app/actions/assets";
+import { requestTransferAction } from "@/app/actions/transfers";
+import { logJobAction, addChargeAction } from "@/app/actions/jobs";
+import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
+import { useRouter } from "next/navigation";
+import type { Asset, Branch, Profile } from "@/lib/types";
+
+export default function AssetActions({
+  asset,
+  profile,
+  branches,
+  candidates,
+}: {
+  asset: Asset;
+  profile: Profile;
+  branches: Branch[];
+  candidates: Asset[]; // opposite-part assets available to pair
+}) {
+  const isRepair = profile.role === "repair";
+  const isAdmin = profile.role === "admin";
+  const ownsBranch =
+    isAdmin ||
+    (profile.role === "branch_manager" && profile.branch_code === asset.current_branch);
+
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+      {!isRepair && (
+        <Modal
+          triggerLabel="Report an issue"
+          title={`Report an issue — ${asset.id}`}
+          subtitle="CoolTech and Admin are notified. The unit shows 'Issue reported' until a repair is logged."
+        >
+          {(close) => <ReportIssue assetId={asset.id} close={close} />}
+        </Modal>
+      )}
+
+      <Modal
+        triggerLabel="Log service / repair"
+        triggerClassName="btn btn-primary"
+        title={`Log service / repair — ${asset.id}`}
+        subtitle="Sets the last-service date, clears any open issue, and marks the unit returned from CoolTech."
+      >
+        {(close) => <LogJob assetId={asset.id} close={close} />}
+      </Modal>
+
+      {(isAdmin || isRepair) && (
+        <Modal
+          triggerLabel="Add charge"
+          title={`Add a standalone charge — ${asset.id}`}
+          subtitle="A visit or inspection fee with no service done. Does not change the service date."
+        >
+          {(close) => <AddCharge assetId={asset.id} close={close} />}
+        </Modal>
+      )}
+
+      {ownsBranch && (
+        <Modal
+          triggerLabel="Change pairing"
+          title={`Change pairing — ${asset.id}`}
+          subtitle="Pick the opposite part to connect, or keep this unit as a spare. A reason is required."
+        >
+          {(close) => (
+            <ChangePairing asset={asset} candidates={candidates} close={close} />
+          )}
+        </Modal>
+      )}
+
+      {!isRepair && (
+        <Modal
+          triggerLabel="Request transfer"
+          title={`Request transfer — ${asset.id}`}
+          subtitle="Ask the branch that holds this part to send it to another branch."
+        >
+          {(close) => (
+            <RequestTransfer asset={asset} branches={branches} profile={profile} close={close} />
+          )}
+        </Modal>
+      )}
+
+      {(isRepair || isAdmin) && !asset.at_vendor && (
+        <PickupButton assetId={asset.id} />
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- sub-forms ------------------------------- */
+
+function ReportIssue({ assetId, close }: { assetId: string; close: () => void }) {
+  const [state, action] = useActionState<ActionState, FormData>(reportIssueAction, {});
+  useOnSuccess(state, close);
+  return (
+    <form action={action}>
+      <FormError state={state} />
+      <input type="hidden" name="asset_id" value={assetId} />
+      <Field label="What is wrong?">
+        <textarea
+          name="description"
+          className="textarea"
+          rows={4}
+          placeholder="e.g. Not cooling, tripping the breaker…"
+          required
+        />
+      </Field>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" className="btn" onClick={close}>Cancel</button>
+        <SubmitButton label="Report issue" />
+      </div>
+    </form>
+  );
+}
+
+function LogJob({ assetId, close }: { assetId: string; close: () => void }) {
+  const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
+  useOnSuccess(state, close);
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <form action={action}>
+      <FormError state={state} />
+      <input type="hidden" name="asset_id" value={assetId} />
+      <Row>
+        <Field label="Type">
+          <select name="type" className="select" defaultValue="Service">
+            <option>Service</option>
+            <option>Repair</option>
+          </select>
+        </Field>
+        <Field label="Date">
+          <input type="date" name="date" className="input" defaultValue={today} />
+        </Field>
+      </Row>
+      <Field label="Problem">
+        <textarea name="problem" className="textarea" rows={2} placeholder="What was reported / found" />
+      </Field>
+      <Field label="What was done / part replaced">
+        <textarea name="work_done" className="textarea" rows={2} />
+      </Field>
+      <Row>
+        <Field label="Bill amount (Rs)">
+          <input type="number" name="bill_amount" className="input" min={0} step="1" defaultValue={0} />
+        </Field>
+        <Field label="Days taken">
+          <input type="number" name="days_taken" className="input" min={0} defaultValue={0} />
+        </Field>
+      </Row>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" className="btn" onClick={close}>Cancel</button>
+        <SubmitButton label="Save job" />
+      </div>
+    </form>
+  );
+}
+
+function AddCharge({ assetId, close }: { assetId: string; close: () => void }) {
+  const [state, action] = useActionState<ActionState, FormData>(addChargeAction, {});
+  useOnSuccess(state, close);
+  const today = new Date().toISOString().slice(0, 10);
+  return (
+    <form action={action}>
+      <FormError state={state} />
+      <input type="hidden" name="asset_id" value={assetId} />
+      <Field label="Charge label">
+        <input name="label" className="input" placeholder="e.g. Inspection visit, gas top-up" required />
+      </Field>
+      <Row>
+        <Field label="Amount (Rs)">
+          <input type="number" name="amount" className="input" min={1} step="1" required />
+        </Field>
+        <Field label="Date">
+          <input type="date" name="date" className="input" defaultValue={today} />
+        </Field>
+      </Row>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" className="btn" onClick={close}>Cancel</button>
+        <SubmitButton label="Add charge" />
+      </div>
+    </form>
+  );
+}
+
+function ChangePairing({
+  asset,
+  candidates,
+  close,
+}: {
+  asset: Asset;
+  candidates: Asset[];
+  close: () => void;
+}) {
+  const [state, action] = useActionState<ActionState, FormData>(changePairingAction, {});
+  useOnSuccess(state, close);
+  const oppositeLabel = asset.part === "I" ? "exterior" : "interior";
+  return (
+    <form action={action}>
+      <FormError state={state} />
+      <input type="hidden" name="asset_id" value={asset.id} />
+      <Field label={`Connect to which ${oppositeLabel}?`}>
+        <select name="target_id" className="select" defaultValue={asset.paired_with ?? ""}>
+          <option value="">Nothing — keep as spare</option>
+          {candidates.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.id} · {c.current_branch}
+              {c.paired_with ? ` (now paired to ${c.paired_with})` : ""}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Reason (required)">
+        <textarea name="reason" className="textarea" rows={3} required placeholder="Why is the pairing changing?" />
+      </Field>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" className="btn" onClick={close}>Cancel</button>
+        <SubmitButton label="Save pairing" />
+      </div>
+    </form>
+  );
+}
+
+function RequestTransfer({
+  asset,
+  branches,
+  profile,
+  close,
+}: {
+  asset: Asset;
+  branches: Branch[];
+  profile: Profile;
+  close: () => void;
+}) {
+  const [state, action] = useActionState<ActionState, FormData>(requestTransferAction, {});
+  useOnSuccess(state, close);
+  const lockedTo = profile.role === "branch_manager" ? profile.branch_code : null;
+  const options = branches.filter((b) => b.code !== asset.current_branch);
+  return (
+    <form action={action}>
+      <FormError state={state} />
+      <input type="hidden" name="asset_id" value={asset.id} />
+      <div style={{ fontSize: 13.5, color: "var(--muted)", marginBottom: 10 }}>
+        Currently at <strong>{asset.current_branch}</strong>.
+      </div>
+      <Field label="Send to branch">
+        <select
+          name="to_branch"
+          className="select"
+          defaultValue={lockedTo ?? ""}
+          disabled={!!lockedTo}
+        >
+          {!lockedTo && <option value="">Choose a branch…</option>}
+          {options.map((b) => (
+            <option key={b.code} value={b.code}>
+              {b.code} — {b.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Reason (required)">
+        <textarea name="reason" className="textarea" rows={3} required />
+      </Field>
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+        <button type="button" className="btn" onClick={close}>Cancel</button>
+        <SubmitButton label="Send request" />
+      </div>
+    </form>
+  );
+}
+
+function PickupButton({ assetId }: { assetId: string }) {
+  const [state, action] = useActionState<ActionState, FormData>(pickupAction, {});
+  const router = useRouter();
+  if (state?.ok) router.refresh();
+  return (
+    <form action={action}>
+      <input type="hidden" name="asset_id" value={assetId} />
+      <SubmitButtonPlain label="Pick up" />
+    </form>
+  );
+}
+
+function SubmitButtonPlain({ label }: { label: string }) {
+  return (
+    <button type="submit" className="btn">
+      {label}
+    </button>
+  );
+}
