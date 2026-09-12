@@ -41,12 +41,15 @@ export async function logJobAction(
     return { error: "Choose Service or Repair." };
 
   const asset = await getAsset(assetId);
-  if (!asset)
+  if (!asset) {
+    if (!assetId) return { error: "No asset id received — hard-refresh (Ctrl+Shift+R) and retry." };
+    const { count } = await supabaseAdmin()
+      .from("assets")
+      .select("id", { count: "exact", head: true });
     return {
-      error: assetId
-        ? `Asset "${assetId}" not found — refresh the page and try again.`
-        : "No asset id received — refresh the page and try again.",
+      error: `Asset "${assetId}" not found (portal currently has ${count ?? "?"} assets). It was likely deleted — hard-refresh (Ctrl+Shift+R) and open it again from the Assets list.`,
     };
+  }
   if (!canLog(profile.role, profile.branch_code, asset))
     return { error: "You cannot log a job on this asset." };
 
