@@ -174,7 +174,7 @@ export async function markInstalledAction(
     .update({ room, is_spare: false })
     .eq("id", transfer.asset_id);
 
-  await admin
+  const { error: markErr } = await admin
     .from("transfers")
     .update({
       installed: true,
@@ -183,6 +183,13 @@ export async function markInstalledAction(
       installed_at: new Date().toISOString(),
     })
     .eq("id", transferId);
+  if (markErr) {
+    // Most common cause: the install/spare columns haven't been added to the
+    // database yet — run supabase/migrations/2026_add_spare_and_install.sql.
+    return {
+      error: `Could not mark installed: ${markErr.message}. If this mentions a missing column, run the latest SQL migration on the database.`,
+    };
+  }
 
   await admin.from("asset_events").insert({
     asset_id: transfer.asset_id,

@@ -27,7 +27,19 @@ export default function MarkInstalled({
         ✓ Installed{room ? ` in Room ${room}` : ""}
       </button>
       {state?.error && (
-        <span style={{ color: "#b91c1c", fontSize: 12 }}>{state.error}</span>
+        <span
+          style={{
+            color: "#b91c1c",
+            fontSize: 12,
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            borderRadius: 6,
+            padding: "4px 8px",
+            maxWidth: 320,
+          }}
+        >
+          {state.error}
+        </span>
       )}
     </form>
   );
