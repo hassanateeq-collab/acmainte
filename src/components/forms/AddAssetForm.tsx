@@ -115,8 +115,10 @@ function Inner({
 
       <Row>
         <Field label="Home branch">
+          {/* When locked, the <select> is disabled and browsers don't submit
+              disabled fields — so carry the value in a hidden input. */}
           <select
-            name="home_branch"
+            name={lockedBranch ? undefined : "home_branch"}
             className="select"
             value={branch}
             onChange={(e) => setBranch(e.target.value)}
@@ -128,6 +130,7 @@ function Inner({
               </option>
             ))}
           </select>
+          {lockedBranch && <input type="hidden" name="home_branch" value={branch} />}
         </Field>
         <Field label="Room (blank = store / spare)">
           <input
