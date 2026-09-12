@@ -55,6 +55,9 @@ export default async function ServicePage() {
           {rows.map(({ a, d }) => {
             const m = meta.get(a.id);
             const nsd = nextServiceDate(a);
+            // Only offer "✓ Serviced" while a service is actually due.
+            // Once serviced (Healthy / not yet due), no service action shows.
+            const serviceDue = assetStatus(a) === "Service due";
             return (
               <tr key={a.id}>
                 <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
@@ -70,7 +73,13 @@ export default async function ServicePage() {
                 <td style={{ maxWidth: 220, color: "var(--muted)", fontSize: 13 }}>{m?.lastProblem ?? "—"}</td>
                 <td>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <QuickComplete assetId={a.id} kind="Service" label="✓ Serviced" />
+                    {serviceDue ? (
+                      <QuickComplete assetId={a.id} kind="Service" label="✓ Serviced" />
+                    ) : (
+                      <span style={{ fontSize: 12.5, color: "var(--muted)", alignSelf: "center" }}>
+                        Serviced · next {fmtDate(nsd ? nsd.toISOString() : null)}
+                      </span>
+                    )}
                     <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
                     {canPickup && <PickupInline assetId={a.id} />}
                   </div>
