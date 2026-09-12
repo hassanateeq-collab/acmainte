@@ -140,6 +140,7 @@ export default function AssetActions({
           assetId={asset.id}
           triggerLabel="Delete asset"
           triggerClassName="btn btn-sm btn-danger"
+          redirectTo="/assets"
         />
       )}
     </div>
