@@ -3,7 +3,6 @@ import { requireProfile } from "@/lib/auth";
 import { listAssets, listTransfers, listBranches } from "@/lib/data";
 import { fmtDateTime } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
-import DecideTransfer from "@/components/DecideTransfer";
 import RequestMove from "@/components/RequestMove";
 import MarkInstalled from "@/components/MarkInstalled";
 import { Tag } from "@/components/StatusBadge";
@@ -174,12 +173,12 @@ export default async function MovePage() {
     .filter((a) => (profile.role === "branch_manager" ? a.current_branch !== myBranch : true))
     .sort((a, b) => (a.current_branch + a.id).localeCompare(b.current_branch + b.id));
 
-  // Requests I need to decide (someone wants a part from my branch).
-  const incoming = transfers.filter(
+  // Requests I need to decide now live on the dedicated Approvals page.
+  const toApprove = transfers.filter(
     (t) =>
       t.status === "waiting" &&
       (profile.role === "admin" || t.from_branch === myBranch)
-  );
+  ).length;
 
   // My own pending requests (into my branch).
   const outgoing = transfers.filter(
@@ -206,34 +205,17 @@ export default async function MovePage() {
         }
       />
 
-      {/* Requests waiting on me */}
-      {incoming.length > 0 && (
-        <>
-          <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>
-            Requests to approve
-            <span style={{ marginLeft: 8 }}><Tag tone="amber">{incoming.length}</Tag></span>
-          </h2>
-          <div className="card table-wrap" style={{ marginBottom: 24 }}>
-            <table className="data">
-              <thead>
-                <tr><th>Part</th><th>From → To</th><th>Install room</th><th>Reason</th><th>Requested by</th><th>When</th><th></th></tr>
-              </thead>
-              <tbody>
-                {incoming.map((t) => (
-                  <tr key={t.id}>
-                    <td><Link href={`/assets/${t.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{t.asset_id}</Link></td>
-                    <td>{t.from_branch} → {t.to_branch}</td>
-                    <td>{t.to_room ? `Room ${t.to_room}` : "—"}</td>
-                    <td style={{ maxWidth: 240 }}>{t.reason}</td>
-                    <td>{t.requested_by_name}</td>
-                    <td>{fmtDateTime(t.requested_at)}</td>
-                    <td><DecideTransfer transferId={t.id} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+      {/* Pointer to the Approvals page when requests are waiting on me */}
+      {toApprove > 0 && (
+        <div
+          className="card"
+          style={{ padding: "12px 16px", marginBottom: 20, background: "#fffbeb", borderColor: "#fde68a", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}
+        >
+          <span style={{ fontSize: 14, color: "#92400e", fontWeight: 600 }}>
+            {toApprove} move request{toApprove === 1 ? "" : "s"} waiting for your approval.
+          </span>
+          <Link href="/approvals" className="btn btn-sm btn-primary">Go to Approvals →</Link>
+        </div>
       )}
 
       {/* Spare parts I can request */}
