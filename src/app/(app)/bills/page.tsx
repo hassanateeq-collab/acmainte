@@ -115,7 +115,17 @@ export default async function BillsPage() {
                       </ul>
                     )}
                   </td>
-                  <td style={{ fontWeight: 700 }}>{money(jobTotal(j))}</td>
+                  <td style={{ fontWeight: 700 }}>
+                    {money(jobTotal(j))}
+                    <div className="no-print" style={{ marginTop: 3 }}>
+                      <Link
+                        href={`/bills/${j.id}`}
+                        style={{ fontSize: 12, color: "var(--brand-ink)", fontWeight: 600 }}
+                      >
+                        🧾 Bill
+                      </Link>
+                    </div>
+                  </td>
                   <td>{j.days_taken || 0}</td>
                   <td style={{ fontSize: 13 }}>{j.created_by_name ?? "—"}</td>
                   {showActions && (

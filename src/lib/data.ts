@@ -100,6 +100,24 @@ export async function listAllJobs(): Promise<JobWithExtras[]> {
   return (data as JobWithExtras[]) ?? [];
 }
 
+export async function getJobWithAsset(
+  id: string
+): Promise<{ job: JobWithExtras; asset: Asset | null } | null> {
+  const { data } = await supabaseAdmin()
+    .from("jobs")
+    .select("*, job_charges(*), job_edits(*)")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  const job = data as JobWithExtras;
+  const { data: a } = await supabaseAdmin()
+    .from("assets")
+    .select("*")
+    .eq("id", job.asset_id)
+    .maybeSingle();
+  return { job, asset: (a as Asset) ?? null };
+}
+
 export async function listTransfers(): Promise<Transfer[]> {
   const { data } = await supabaseAdmin()
     .from("transfers")
