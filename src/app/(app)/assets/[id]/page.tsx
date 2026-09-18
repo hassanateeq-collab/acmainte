@@ -15,7 +15,8 @@ import {
   daysToService,
   lifeLeftYears,
 } from "@/lib/status";
-import { mockOccupancy, isSwapped } from "@/lib/rows";
+import { isSwapped } from "@/lib/rows";
+import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import { money, fmtDate, fmtDateTime } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import { StatusBadge, Tag } from "@/components/StatusBadge";
@@ -32,12 +33,13 @@ export default async function AssetRecordPage({
   const assetId = decodeURIComponent(id);
   const profile = await requireProfile();
 
-  const [asset, allAssets, events, jobs, branches] = await Promise.all([
+  const [asset, allAssets, events, jobs, branches, occ] = await Promise.all([
     getAsset(assetId),
     listAssets(),
     listAssetEvents(assetId),
     listJobsForAsset(assetId),
     listBranches(),
+    getAllOccupancy(),
   ]);
   if (!asset) notFound();
 
@@ -135,7 +137,7 @@ export default async function AssetRecordPage({
             <Detail label="Status">
               <StatusBadge status={status} note={dts !== null && dts < 0 ? `Overdue ${Math.abs(dts)}d` : undefined} />
             </Detail>
-            <Detail label="Occupancy">{mockOccupancy(asset.room)}</Detail>
+            <Detail label="Occupancy">{occText(roomState(occ, asset.current_branch, asset.room))}</Detail>
             <Detail label="Last service">{fmtDate(asset.last_service_date)}</Detail>
             <Detail label="Next service">
               {fmtDate(nsd ? nsd.toISOString() : null)}

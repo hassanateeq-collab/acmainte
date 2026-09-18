@@ -3,7 +3,7 @@ import { requireProfile } from "@/lib/auth";
 import { listAssets, listAllJobs } from "@/lib/data";
 import { daysToService, nextServiceDate, assetStatus } from "@/lib/status";
 import { fmtDate } from "@/lib/format";
-import { mockOccupancy } from "@/lib/rows";
+import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import PageHeader from "@/components/PageHeader";
 import PickupInline from "@/components/PickupInline";
 import QuickComplete from "@/components/QuickComplete";
@@ -23,7 +23,7 @@ function progressOf(a: Asset): { done: boolean; label: string; note?: string } {
 
 export default async function ServicePage() {
   const profile = await requireProfile();
-  const [assets, jobs] = await Promise.all([listAssets(), listAllJobs()]);
+  const [assets, jobs, occ] = await Promise.all([listAssets(), listAllJobs(), getAllOccupancy()]);
   // Admin or a branch manager (of the rows they see) can mark a service done.
   const canMark = profile.role === "admin" || profile.role === "branch_manager";
 
@@ -69,7 +69,7 @@ export default async function ServicePage() {
             return (
               <tr key={a.id}>
                 <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
-                <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room} (${mockOccupancy(a.room)})` : " · Store"}</td>
+                <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room} (${occText(roomState(occ, a.current_branch, a.room))})` : " · Store"}</td>
                 <td><StatusBadge status={assetStatus(a)} /></td>
                 <td>
                   <Tag tone={prog.done ? "brand" : "amber"}>

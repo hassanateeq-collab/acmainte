@@ -87,6 +87,7 @@ deploy. Framework preset: **Next.js** (auto-detected). No extra config needed.
 
 ## Notes / still to do (from the spec)
 
-- Room occupancy is mocked (`mockOccupancy`) until the PMS feed is connected.
+- Room occupancy is live from the Hamsun-PMS database when `PMS_SUPABASE_URL` +
+  `PMS_SUPABASE_KEY` are set (`src/lib/pms.ts`); otherwise it shows "—".
 - Other asset types (no I/E segment) are supported by the ID scheme already.
 - WhatsApp/Slack delivery of notifications is portal-only for now.

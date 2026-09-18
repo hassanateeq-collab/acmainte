@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireProfile } from "@/lib/auth";
 import { listAssets } from "@/lib/data";
-import { mockOccupancy } from "@/lib/rows";
+import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import PageHeader from "@/components/PageHeader";
 import PickupInline from "@/components/PickupInline";
 import QuickComplete from "@/components/QuickComplete";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function IssuesPage() {
   const profile = await requireProfile();
-  const assets = await listAssets();
+  const [assets, occ] = await Promise.all([listAssets(), getAllOccupancy()]);
   const inScope =
     profile.role === "branch_manager"
       ? assets.filter((a) => a.current_branch === profile.branch_code)
@@ -38,7 +38,7 @@ export default async function IssuesPage() {
             {reported.map((a) => (
               <tr key={a.id}>
                 <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
-                <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room} (${mockOccupancy(a.room)})` : " · Store"}</td>
+                <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room} (${occText(roomState(occ, a.current_branch, a.room))})` : " · Store"}</td>
                 <td style={{ maxWidth: 320 }}>{a.open_issue}</td>
                 <td>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

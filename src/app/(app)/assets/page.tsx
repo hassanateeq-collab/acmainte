@@ -1,7 +1,8 @@
 import { requireProfile } from "@/lib/auth";
 import { listAssets, listAllJobs, listBranches, listAssetTypes, jobTotal } from "@/lib/data";
 import { assetStatus, nextServiceDate, lifeLeftYears } from "@/lib/status";
-import { buildAssetRows, mockOccupancy } from "@/lib/rows";
+import { buildAssetRows } from "@/lib/rows";
+import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import PageHeader from "@/components/PageHeader";
 import AddAssetForm from "@/components/forms/AddAssetForm";
 import ManageTypes from "@/components/ManageTypes";
@@ -12,11 +13,12 @@ export const dynamic = "force-dynamic";
 
 export default async function AssetsPage() {
   const profile = await requireProfile();
-  const [assets, jobs, branches, types] = await Promise.all([
+  const [assets, jobs, branches, types, occ] = await Promise.all([
     listAssets(),
     listAllJobs(),
     listBranches(),
     listAssetTypes(),
+    getAllOccupancy(),
   ]);
 
   // Aggregate money + repair counts per asset.
@@ -57,7 +59,7 @@ export default async function AssetsPage() {
       key: r.key,
       branch: r.branch,
       room: r.room,
-      occupancy: mockOccupancy(r.room),
+      occupancy: occText(roomState(occ, r.branch, r.room)),
       interior: unit(r.interior),
       exterior: unit(r.exterior),
       swapped: r.swapped,
