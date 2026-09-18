@@ -12,17 +12,6 @@ import { createClient } from "@supabase/supabase-js";
 
 export type RoomState = "Occupied" | "Vacant" | "Blocked" | "Unknown";
 
-// Maintenance-portal branch code -> PMS business_units.property_id
-const BRANCH_PROPERTY: Record<string, string> = {
-  FSL: "6fcdcc05-3767-46a9-a6b1-396fad7b26ef",
-  EXT: "539dc430-84c8-4d3e-942d-33ad0ffc3bc9",
-  CLF: "bfa1f6f3-57bf-4add-b3b4-2aaff835e427",
-  DHA: "4354c02c-c816-424c-946b-7d5781bc6dd1",
-};
-const PROPERTY_BRANCH: Record<string, string> = Object.fromEntries(
-  Object.entries(BRANCH_PROPERTY).map(([b, p]) => [p, b])
-);
-
 export function pmsEnabled(): boolean {
   return !!(process.env.PMS_SUPABASE_URL && process.env.PMS_SUPABASE_KEY);
 }
@@ -34,67 +23,30 @@ function pms() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/** Today's business date in the hotel's timezone (Pakistan, UTC+5). */
-function hotelToday(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Karachi" });
-}
-
 /** branch code -> (PMS room_number -> state) */
 export type OccupancyMap = Record<string, Record<string, RoomState>>;
 
-type RoomRow = { id: string; room_number: string; property_id: string };
-type BookingRow = { room_id: string; status: string | null; checkin_status: string | null };
+type OccRow = { branch_code: string; room_number: string; state: string };
 
 /**
- * Fetch tonight's occupancy for every branch in one pass. Cached per request.
- * A room is Occupied when a live booking (confirmed or checked-in) covers
- * tonight, Blocked when a block covers it, otherwise Vacant. No-shows,
- * cancellations and checkouts are ignored.
+ * Tonight's occupancy for every branch, read from the sanitized
+ * `portal_room_occupancy` view in the PMS (branch + room + state only —
+ * no guest data). Cached per request. Returns an empty map when the PMS
+ * env vars aren't set, so callers fall back to "Unknown".
  */
 export const getAllOccupancy = cache(async function getAllOccupancy(): Promise<OccupancyMap> {
   const out: OccupancyMap = { FSL: {}, EXT: {}, CLF: {}, DHA: {} };
   const db = pms();
   if (!db) return out;
 
-  const propIds = Object.values(BRANCH_PROPERTY);
-  const { data: rooms, error } = await db
-    .from("rooms")
-    .select("id,room_number,property_id")
-    .in("property_id", propIds)
-    .eq("is_active", true);
-  if (error || !rooms) return out;
+  const { data, error } = await db
+    .from("portal_room_occupancy")
+    .select("branch_code,room_number,state");
+  if (error || !data) return out;
 
-  const roomById = new Map<string, RoomRow>();
-  for (const r of rooms as RoomRow[]) {
-    roomById.set(r.id, r);
-    const branch = PROPERTY_BRANCH[r.property_id];
-    if (branch) out[branch][String(r.room_number)] = "Vacant";
-  }
-
-  const today = hotelToday();
-  const roomIds = (rooms as RoomRow[]).map((r) => r.id);
-  const { data: bookings } = await db
-    .from("bookings")
-    .select("room_id,status,checkin_status")
-    .in("room_id", roomIds)
-    .lte("check_in", today)
-    .gt("check_out", today);
-
-  for (const b of (bookings as BookingRow[]) ?? []) {
-    const r = roomById.get(b.room_id);
-    if (!r) continue;
-    const branch = PROPERTY_BRANCH[r.property_id];
-    if (!branch) continue;
-    const st = String(b.status ?? "").toUpperCase();
-    const cin = String(b.checkin_status ?? "").toUpperCase();
-    if (["CANCELLED", "CHECKED_OUT", "NO_SHOW"].includes(st)) continue;
-    const key = String(r.room_number);
-    const cur = out[branch][key];
-    if (cin === "CHECKED_IN" || st === "CONFIRMED") {
-      out[branch][key] = "Occupied";
-    } else if (st === "BLOCKED" && cur !== "Occupied") {
-      out[branch][key] = "Blocked";
-    }
+  for (const row of data as OccRow[]) {
+    const branch = out[row.branch_code];
+    if (branch) branch[String(row.room_number)] = row.state as RoomState;
   }
   return out;
 });
