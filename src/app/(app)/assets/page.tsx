@@ -41,8 +41,10 @@ export default async function AssetsPage() {
           room: a.room,
           installed_date: a.installed_date,
           last_service_date: a.last_service_date,
+          last_general_service_date: a.last_general_service_date,
           expected_life_years: a.expected_life_years,
           service_interval_days: a.service_interval_days,
+          general_interval_days: a.general_interval_days,
         }
       : null;
 

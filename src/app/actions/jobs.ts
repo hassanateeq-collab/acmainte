@@ -36,6 +36,13 @@ export async function logJobAction(
   const work_done = String(formData.get("work_done") || "").trim() || null;
   const bill_amount = Number(formData.get("bill_amount")) || 0;
   const days_taken = Number(formData.get("days_taken")) || 0;
+  // For a Service, which cadence was done: General (monthly) or Normal (quarterly).
+  const service_kind =
+    type === "Service"
+      ? String(formData.get("service_kind") || "Normal") === "General"
+        ? "General"
+        : "Normal"
+      : null;
 
   if (!["Service", "Repair"].includes(type))
     return { error: "Choose Service or Repair." };
@@ -60,6 +67,7 @@ export async function logJobAction(
     type,
     problem,
     work_done,
+    service_kind,
     bill_amount,
     days_taken,
     created_by: profile.id,
@@ -67,15 +75,19 @@ export async function logJobAction(
   });
   if (error) return { error: error.message };
 
-  // Saving a service/repair sets last service, clears the issue, marks returned.
-  await admin
-    .from("assets")
-    .update({ last_service_date: date, open_issue: null, at_vendor: false })
-    .eq("id", assetId);
+  // Update the right service clock, clear the issue, mark returned from vendor.
+  // A General service updates the monthly clock; a Normal service the quarterly
+  // one. A Repair only clears the issue / vendor state.
+  const patch: Record<string, unknown> = { open_issue: null, at_vendor: false };
+  if (type === "Service") {
+    if (service_kind === "General") patch.last_general_service_date = date;
+    else patch.last_service_date = date;
+  }
+  await admin.from("assets").update(patch).eq("id", assetId);
 
   await notify(
     branchInbox(asset.current_branch),
-    `${type} logged on ${assetId} — ${rs(bill_amount)}${
+    `${type === "Service" ? `${service_kind} service` : type} logged on ${assetId} — ${rs(bill_amount)}${
       asset.at_vendor ? " (returned from CoolTech)" : ""
     }`,
     { kind: "job_logged", asset_id: assetId }

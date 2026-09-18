@@ -10,8 +10,10 @@ export type EditableAsset = {
   room: string | null;
   installed_date: string | null;
   last_service_date: string | null;
+  last_general_service_date: string | null;
   expected_life_years: number;
   service_interval_days: number;
+  general_interval_days: number;
 };
 
 export default function EditAsset({
@@ -50,15 +52,23 @@ function Inner({ asset, close }: { asset: EditableAsset; close: () => void }) {
         <Field label="Installed date">
           <input type="date" name="installed_date" className="input" defaultValue={asset.installed_date ?? ""} />
         </Field>
-        <Field label="Last service date">
-          <input type="date" name="last_service_date" className="input" defaultValue={asset.last_service_date ?? ""} />
-        </Field>
-      </Row>
-      <Row>
         <Field label="Expected life (years)">
           <input type="number" name="expected_life_years" className="input" min={1} defaultValue={asset.expected_life_years} />
         </Field>
-        <Field label="Service interval (days)">
+      </Row>
+      <Row>
+        <Field label="Last general service (monthly)">
+          <input type="date" name="last_general_service_date" className="input" defaultValue={asset.last_general_service_date ?? ""} />
+        </Field>
+        <Field label="General interval (days)">
+          <input type="number" name="general_interval_days" className="input" min={1} defaultValue={asset.general_interval_days || 30} />
+        </Field>
+      </Row>
+      <Row>
+        <Field label="Last normal service (3-monthly)">
+          <input type="date" name="last_service_date" className="input" defaultValue={asset.last_service_date ?? ""} />
+        </Field>
+        <Field label="Normal interval (days)">
           <input type="number" name="service_interval_days" className="input" min={1} defaultValue={asset.service_interval_days} />
         </Field>
       </Row>

@@ -16,8 +16,10 @@ type ClientUnit = {
   room: string | null;
   installed_date: string | null;
   last_service_date: string | null;
+  last_general_service_date: string | null;
   expected_life_years: number;
   service_interval_days: number;
+  general_interval_days: number;
 } | null;
 
 export type ClientRow = {

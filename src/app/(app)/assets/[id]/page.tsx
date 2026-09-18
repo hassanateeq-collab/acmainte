@@ -14,6 +14,10 @@ import {
   nextServiceDate,
   daysToService,
   lifeLeftYears,
+  generalServiceDate,
+  normalServiceDate,
+  generalDays,
+  normalDays,
 } from "@/lib/status";
 import { isSwapped } from "@/lib/rows";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -138,25 +142,11 @@ export default async function AssetRecordPage({
               <StatusBadge status={status} note={dts !== null && dts < 0 ? `Overdue ${Math.abs(dts)}d` : undefined} />
             </Detail>
             <Detail label="Occupancy">{occText(roomState(occ, asset.current_branch, asset.room))}</Detail>
-            <Detail label="Last service">{fmtDate(asset.last_service_date)}</Detail>
-            <Detail label="Next service">
-              {fmtDate(nsd ? nsd.toISOString() : null)}
-              {dts !== null && (
-                <div
-                  style={{
-                    fontSize: 12,
-                    marginTop: 2,
-                    color: dts <= 0 ? "#b91c1c" : dts <= 14 ? "#b45309" : "var(--muted)",
-                  }}
-                >
-                  {dts < 0
-                    ? `overdue ${-dts} day${-dts === 1 ? "" : "s"}`
-                    : dts === 0
-                    ? "due today"
-                    : `in ${dts} day${dts === 1 ? "" : "s"}`}
-                  {dts > 0 && dts <= 14 ? " · service due" : ""}
-                </div>
-              )}
+            <Detail label="General service (monthly)">
+              <ServiceLine next={generalServiceDate(asset)} days={generalDays(asset)} last={asset.last_general_service_date} />
+            </Detail>
+            <Detail label="Normal service (3-monthly)">
+              <ServiceLine next={normalServiceDate(asset)} days={normalDays(asset)} last={asset.last_service_date} />
             </Detail>
             <Detail label="Installed">{fmtDate(asset.installed_date)}</Detail>
             <Detail label="Life left">
@@ -210,6 +200,41 @@ function Alert({ tone, text }: { tone: "red" | "violet" | "amber"; text: string 
   return (
     <div style={{ background: c.bg, border: `1px solid ${c.bd}`, color: c.fg, borderRadius: 10, padding: "10px 14px", marginBottom: 12, fontSize: 14, fontWeight: 600 }}>
       {text}
+    </div>
+  );
+}
+
+function ServiceLine({
+  next,
+  days,
+  last,
+}: {
+  next: Date | null;
+  days: number | null;
+  last: string | null;
+}) {
+  return (
+    <div>
+      {fmtDate(next ? next.toISOString() : null)}
+      {days !== null && (
+        <div
+          style={{
+            fontSize: 12,
+            marginTop: 2,
+            color: days <= 0 ? "#b91c1c" : days <= 14 ? "#b45309" : "var(--muted)",
+          }}
+        >
+          {days < 0
+            ? `overdue ${-days} day${-days === 1 ? "" : "s"}`
+            : days === 0
+            ? "due today"
+            : `in ${days} day${days === 1 ? "" : "s"}`}
+          {days > 0 && days <= 14 ? " · due" : ""}
+        </div>
+      )}
+      <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>
+        last: {fmtDate(last)}
+      </div>
     </div>
   );
 }

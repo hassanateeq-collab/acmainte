@@ -51,6 +51,8 @@ export async function createAssetAction(
     Number(formData.get("expected_life_years")) || 10;
   const service_interval_days =
     Number(formData.get("service_interval_days")) || 90;
+  const general_interval_days =
+    Number(formData.get("general_interval_days")) || 30;
 
   if (!home_branch) return { error: "Choose the home branch." };
 
@@ -87,6 +89,7 @@ export async function createAssetAction(
       last_service_date,
       expected_life_years,
       service_interval_days,
+      general_interval_days,
     });
 
   async function afterInsert(id: string) {
@@ -349,10 +352,14 @@ export async function updateAssetAction(
   const room = String(formData.get("room") || "").trim();
   const installed_date = String(formData.get("installed_date") || "") || null;
   const last_service_date = String(formData.get("last_service_date") || "") || null;
+  const last_general_service_date =
+    String(formData.get("last_general_service_date") || "") || null;
   const expected_life_years =
     Number(formData.get("expected_life_years")) || a.expected_life_years;
   const service_interval_days =
     Number(formData.get("service_interval_days")) || a.service_interval_days;
+  const general_interval_days =
+    Number(formData.get("general_interval_days")) || a.general_interval_days || 30;
 
   const { error } = await admin
     .from("assets")
@@ -360,8 +367,10 @@ export async function updateAssetAction(
       room: room || "store",
       installed_date,
       last_service_date,
+      last_general_service_date,
       expected_life_years,
       service_interval_days,
+      general_interval_days,
     })
     .eq("id", assetId);
   if (error) return { error: error.message };
@@ -369,7 +378,7 @@ export async function updateAssetAction(
   await admin.from("asset_events").insert({
     asset_id: assetId,
     kind: "note",
-    description: `Details updated — room ${room || "store"}, life ${expected_life_years}y, service every ${service_interval_days}d`,
+    description: `Details updated — room ${room || "store"}, life ${expected_life_years}y, general every ${general_interval_days}d, normal every ${service_interval_days}d`,
     actor_name: actorName(profile),
   });
   revalidateAll();

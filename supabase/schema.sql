@@ -82,7 +82,9 @@ create table if not exists public.assets (
   installed_date date,
   expected_life_years int not null default 10,
   last_service_date date,
-  service_interval_days int not null default 90,
+  service_interval_days int not null default 90,          -- Normal (quarterly) service
+  last_general_service_date date,
+  general_interval_days int not null default 30,          -- General (monthly) service
   open_issue text,
   at_vendor boolean not null default false,
   paired_with text references public.assets(id),    -- the connected opposite part
@@ -124,6 +126,7 @@ create table if not exists public.jobs (
   type job_type not null,
   problem text,
   work_done text,
+  service_kind text,                                       -- 'General' | 'Normal' for Service jobs
   bill_amount numeric(12,2) not null default 0,
   days_taken int not null default 0,
   created_by uuid references public.profiles(id),

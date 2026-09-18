@@ -17,7 +17,7 @@ import SpareToggle from "./SpareToggle";
 import MoveBack from "./MoveBack";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
-import { daysToService, nextServiceDate } from "@/lib/status";
+import { daysToService, nextServiceDate, generalDays, normalDays } from "@/lib/status";
 import { fmtDate } from "@/lib/format";
 import type { Asset, Branch, Profile } from "@/lib/types";
 
@@ -44,7 +44,10 @@ export default function AssetActions({
   // Quick "mark done" only makes sense when there's something to complete.
   const dts = daysToService(asset);
   const nsd = nextServiceDate(asset);
-  const serviceDueNow = dts !== null && dts <= 0; // actually due / overdue
+  const gd = generalDays(asset);
+  const nd = normalDays(asset);
+  const generalDue = gd !== null && gd <= 14;
+  const normalDue = nd !== null && nd <= 14;
   const hasIssue = !!asset.open_issue;
   const atVendor = asset.at_vendor;
   const canComplete = ownsBranch;
@@ -70,15 +73,18 @@ export default function AssetActions({
         {(close) => <LogJob assetId={asset.id} close={close} />}
       </Modal>
 
-      {canComplete && (serviceDueNow || atVendor) && (
-        <QuickComplete assetId={asset.id} kind="Service" />
+      {canComplete && (generalDue || atVendor) && (
+        <QuickComplete assetId={asset.id} kind="Service" serviceKind="General" label="✓ General service done" />
+      )}
+      {canComplete && (normalDue || atVendor) && (
+        <QuickComplete assetId={asset.id} kind="Service" serviceKind="Normal" label="✓ Normal service done" />
       )}
       {canComplete && (hasIssue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Repair" />
       )}
 
-      {/* When service isn't due, show when it next is. */}
-      {!serviceDueNow && !atVendor && nsd && (
+      {/* When neither service is due, show when the next one is. */}
+      {!generalDue && !normalDue && !atVendor && nsd && (
         <span
           className="chip"
           style={{ background: "#eef6ff", color: "#1e3a8a" }}
@@ -141,8 +147,10 @@ export default function AssetActions({
             room: asset.room,
             installed_date: asset.installed_date,
             last_service_date: asset.last_service_date,
+            last_general_service_date: asset.last_general_service_date,
             expected_life_years: asset.expected_life_years,
             service_interval_days: asset.service_interval_days,
+            general_interval_days: asset.general_interval_days,
           }}
           triggerLabel="Edit details"
         />
@@ -202,10 +210,16 @@ function LogJob({ assetId, close }: { assetId: string; close: () => void }) {
             <option>Repair</option>
           </select>
         </Field>
-        <Field label="Date">
-          <input type="date" name="date" className="input" defaultValue={today} />
+        <Field label="Service type (for a service)">
+          <select name="service_kind" className="select" defaultValue="Normal">
+            <option value="General">General (monthly)</option>
+            <option value="Normal">Normal (3-monthly)</option>
+          </select>
         </Field>
       </Row>
+      <Field label="Date">
+        <input type="date" name="date" className="input" defaultValue={today} />
+      </Field>
       <Field label="Problem">
         <textarea name="problem" className="textarea" rows={2} placeholder="What was reported / found" />
       </Field>

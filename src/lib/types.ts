@@ -41,6 +41,8 @@ export type Asset = {
   expected_life_years: number;
   last_service_date: string | null;
   service_interval_days: number;
+  last_general_service_date: string | null;
+  general_interval_days: number;
   open_issue: string | null;
   at_vendor: boolean;
   paired_with: string | null;
@@ -75,6 +77,7 @@ export type Job = {
   type: JobType;
   problem: string | null;
   work_done: string | null;
+  service_kind: string | null; // 'General' | 'Normal' for Service jobs
   bill_amount: number;
   days_taken: number;
   created_by: string | null;

@@ -14,10 +14,12 @@ export default function QuickComplete({
   assetId,
   kind,
   label,
+  serviceKind = "Normal",
 }: {
   assetId: string;
   kind: "Service" | "Repair";
   label?: string;
+  serviceKind?: "General" | "Normal";
 }) {
   const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
   const router = useRouter();
@@ -31,6 +33,7 @@ export default function QuickComplete({
     <form action={action} style={{ display: "inline-flex", flexDirection: "column", gap: 3 }}>
       <input type="hidden" name="asset_id" value={assetId} />
       <input type="hidden" name="type" value={kind} />
+      <input type="hidden" name="service_kind" value={serviceKind} />
       <input type="hidden" name="date" value={today} />
       <input type="hidden" name="bill_amount" value="0" />
       <input type="hidden" name="days_taken" value="0" />
