@@ -17,7 +17,7 @@ import SpareToggle from "./SpareToggle";
 import MoveBack from "./MoveBack";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
 import { useRouter } from "next/navigation";
-import { daysToService, nextServiceDate, generalDays, normalDays } from "@/lib/status";
+import { daysToService, nextServiceDate, generalDays, masterDays } from "@/lib/status";
 import { fmtDate } from "@/lib/format";
 import type { Asset, Branch, Profile } from "@/lib/types";
 
@@ -45,9 +45,9 @@ export default function AssetActions({
   const dts = daysToService(asset);
   const nsd = nextServiceDate(asset);
   const gd = generalDays(asset);
-  const nd = normalDays(asset);
+  const md = masterDays(asset);
   const generalDue = gd !== null && gd <= 14;
-  const normalDue = nd !== null && nd <= 14;
+  const masterDue = md !== null && md <= 14;
   const hasIssue = !!asset.open_issue;
   const atVendor = asset.at_vendor;
   const canComplete = ownsBranch;
@@ -76,15 +76,15 @@ export default function AssetActions({
       {canComplete && (generalDue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Service" serviceKind="General" label="✓ General service done" />
       )}
-      {canComplete && (normalDue || atVendor) && (
-        <QuickComplete assetId={asset.id} kind="Service" serviceKind="Normal" label="✓ Normal service done" />
+      {canComplete && (masterDue || atVendor) && (
+        <QuickComplete assetId={asset.id} kind="Service" serviceKind="Master" label="✓ Master service done" />
       )}
       {canComplete && (hasIssue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Repair" />
       )}
 
       {/* When neither service is due, show when the next one is. */}
-      {!generalDue && !normalDue && !atVendor && nsd && (
+      {!generalDue && !masterDue && !atVendor && nsd && (
         <span
           className="chip"
           style={{ background: "#eef6ff", color: "#1e3a8a" }}
@@ -211,9 +211,9 @@ function LogJob({ assetId, close }: { assetId: string; close: () => void }) {
           </select>
         </Field>
         <Field label="Service type (for a service)">
-          <select name="service_kind" className="select" defaultValue="Normal">
-            <option value="General">General (monthly)</option>
-            <option value="Normal">Normal (3-monthly)</option>
+          <select name="service_kind" className="select" defaultValue="General">
+            <option value="General">General (3-monthly)</option>
+            <option value="Master">Master (yearly)</option>
           </select>
         </Field>
       </Row>

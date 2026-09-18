@@ -14,12 +14,12 @@ export default function QuickComplete({
   assetId,
   kind,
   label,
-  serviceKind = "Normal",
+  serviceKind = "Master",
 }: {
   assetId: string;
   kind: "Service" | "Repair";
   label?: string;
-  serviceKind?: "General" | "Normal";
+  serviceKind?: "General" | "Master";
 }) {
   const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
   const router = useRouter();

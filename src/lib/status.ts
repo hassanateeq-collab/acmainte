@@ -1,9 +1,9 @@
 import type { Asset, AssetStatus } from "./types";
 
-export type ServiceKind = "General" | "Normal";
+export type ServiceKind = "General" | "Master";
 
-const DEFAULT_GENERAL_DAYS = 30; // monthly
-const DEFAULT_NORMAL_DAYS = 90; // quarterly
+const DEFAULT_GENERAL_DAYS = 90; // General service — every 3 months
+const DEFAULT_MASTER_DAYS = 365; // Master service — yearly
 
 function addDaysTo(base: string | null, fallback: string | null, days: number): Date | null {
   const src = base ?? fallback;
@@ -22,7 +22,7 @@ function daysTo(d: Date | null): number | null {
   return Math.round((x.getTime() - today.getTime()) / 86400000);
 }
 
-/** Next General (monthly) service date. */
+/** Next General (3-monthly) service date. */
 export function generalServiceDate(asset: Asset): Date | null {
   return addDaysTo(
     asset.last_general_service_date,
@@ -31,20 +31,20 @@ export function generalServiceDate(asset: Asset): Date | null {
   );
 }
 
-/** Next Normal (quarterly) service date. */
-export function normalServiceDate(asset: Asset): Date | null {
+/** Next Master (yearly) service date. */
+export function masterServiceDate(asset: Asset): Date | null {
   return addDaysTo(
     asset.last_service_date,
     asset.installed_date,
-    asset.service_interval_days || DEFAULT_NORMAL_DAYS
+    asset.service_interval_days || DEFAULT_MASTER_DAYS
   );
 }
 
 export function generalDays(asset: Asset): number | null {
   return daysTo(generalServiceDate(asset));
 }
-export function normalDays(asset: Asset): number | null {
-  return daysTo(normalServiceDate(asset));
+export function masterDays(asset: Asset): number | null {
+  return daysTo(masterServiceDate(asset));
 }
 
 /** The two service cadences, for display. */
@@ -55,22 +55,22 @@ export function serviceLines(asset: Asset): {
 }[] {
   return [
     { kind: "General", date: generalServiceDate(asset), days: generalDays(asset) },
-    { kind: "Normal", date: normalServiceDate(asset), days: normalDays(asset) },
+    { kind: "Master", date: masterServiceDate(asset), days: masterDays(asset) },
   ];
 }
 
 /** Soonest of the two service dates (keeps existing callers working). */
 export function nextServiceDate(asset: Asset): Date | null {
   const g = generalServiceDate(asset);
-  const n = normalServiceDate(asset);
-  if (!g) return n;
-  if (!n) return g;
-  return g < n ? g : n;
+  const m = masterServiceDate(asset);
+  if (!g) return m;
+  if (!m) return g;
+  return g < m ? g : m;
 }
 
 /** Days until the soonest due service (negative = overdue). */
 export function daysToService(asset: Asset): number | null {
-  const vals = [generalDays(asset), normalDays(asset)].filter(
+  const vals = [generalDays(asset), masterDays(asset)].filter(
     (v): v is number => v !== null
   );
   if (vals.length === 0) return null;

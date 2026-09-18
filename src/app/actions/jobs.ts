@@ -39,9 +39,9 @@ export async function logJobAction(
   // For a Service, which cadence was done: General (monthly) or Normal (quarterly).
   const service_kind =
     type === "Service"
-      ? String(formData.get("service_kind") || "Normal") === "General"
+      ? String(formData.get("service_kind") || "Master") === "General"
         ? "General"
-        : "Normal"
+        : "Master"
       : null;
 
   if (!["Service", "Repair"].includes(type))

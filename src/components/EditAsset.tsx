@@ -57,18 +57,18 @@ function Inner({ asset, close }: { asset: EditableAsset; close: () => void }) {
         </Field>
       </Row>
       <Row>
-        <Field label="Last general service (monthly)">
+        <Field label="Last general service (3-monthly)">
           <input type="date" name="last_general_service_date" className="input" defaultValue={asset.last_general_service_date ?? ""} />
         </Field>
         <Field label="General interval (days)">
-          <input type="number" name="general_interval_days" className="input" min={1} defaultValue={asset.general_interval_days || 30} />
+          <input type="number" name="general_interval_days" className="input" min={1} defaultValue={asset.general_interval_days || 90} />
         </Field>
       </Row>
       <Row>
-        <Field label="Last normal service (3-monthly)">
+        <Field label="Last master service (yearly)">
           <input type="date" name="last_service_date" className="input" defaultValue={asset.last_service_date ?? ""} />
         </Field>
-        <Field label="Normal interval (days)">
+        <Field label="Master interval (days)">
           <input type="number" name="service_interval_days" className="input" min={1} defaultValue={asset.service_interval_days} />
         </Field>
       </Row>

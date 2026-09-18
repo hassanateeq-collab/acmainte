@@ -5,9 +5,9 @@ import {
   daysToService,
   assetStatus,
   generalServiceDate,
-  normalServiceDate,
+  masterServiceDate,
   generalDays,
-  normalDays,
+  masterDays,
 } from "@/lib/status";
 import { fmtDate } from "@/lib/format";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -73,9 +73,9 @@ export default async function ServicePage() {
             const m = meta.get(a.id);
             const prog = progressOf(a);
             const gDays = generalDays(a);
-            const nDays = normalDays(a);
+            const mDays = masterDays(a);
             const gDue = gDays !== null && gDays <= 14;
-            const nDue = nDays !== null && nDays <= 14;
+            const mDue = mDays !== null && mDays <= 14;
             const fmtDays = (v: number | null) =>
               v === null ? "" : v < 0 ? `overdue ${-v}d` : `in ${v}d`;
             return (
@@ -95,8 +95,8 @@ export default async function ServicePage() {
                   <div style={{ color: gDue ? "#b45309" : "var(--muted)" }}>
                     <strong style={{ color: "var(--ink)" }}>Gen:</strong> {fmtDate(generalServiceDate(a)?.toISOString() ?? null)} · {fmtDays(gDays)}
                   </div>
-                  <div style={{ color: nDue ? "#b45309" : "var(--muted)", marginTop: 2 }}>
-                    <strong style={{ color: "var(--ink)" }}>Norm:</strong> {fmtDate(normalServiceDate(a)?.toISOString() ?? null)} · {fmtDays(nDays)}
+                  <div style={{ color: mDue ? "#b45309" : "var(--muted)", marginTop: 2 }}>
+                    <strong style={{ color: "var(--ink)" }}>Master:</strong> {fmtDate(masterServiceDate(a)?.toISOString() ?? null)} · {fmtDays(mDays)}
                   </div>
                 </td>
                 <td>{m?.repairs ?? 0}</td>
@@ -106,8 +106,8 @@ export default async function ServicePage() {
                     {canMark && gDue && (
                       <QuickComplete assetId={a.id} kind="Service" serviceKind="General" label="✓ General done" />
                     )}
-                    {canMark && nDue && (
-                      <QuickComplete assetId={a.id} kind="Service" serviceKind="Normal" label="✓ Normal done" />
+                    {canMark && mDue && (
+                      <QuickComplete assetId={a.id} kind="Service" serviceKind="Master" label="✓ Master done" />
                     )}
                     <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
                     {canPickup && !a.at_vendor && <PickupInline assetId={a.id} />}

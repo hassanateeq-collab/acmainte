@@ -190,21 +190,21 @@ function Inner({
             min={1}
           />
         </Field>
-        <Field label="Normal service (days)">
-          <input
-            type="number"
-            name="service_interval_days"
-            className="input"
-            defaultValue={90}
-            min={1}
-          />
-        </Field>
         <Field label="General service (days)">
           <input
             type="number"
             name="general_interval_days"
             className="input"
-            defaultValue={30}
+            defaultValue={90}
+            min={1}
+          />
+        </Field>
+        <Field label="Master service (days)">
+          <input
+            type="number"
+            name="service_interval_days"
+            className="input"
+            defaultValue={365}
             min={1}
           />
         </Field>

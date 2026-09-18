@@ -15,9 +15,9 @@ import {
   daysToService,
   lifeLeftYears,
   generalServiceDate,
-  normalServiceDate,
+  masterServiceDate,
   generalDays,
-  normalDays,
+  masterDays,
 } from "@/lib/status";
 import { isSwapped } from "@/lib/rows";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -142,11 +142,11 @@ export default async function AssetRecordPage({
               <StatusBadge status={status} note={dts !== null && dts < 0 ? `Overdue ${Math.abs(dts)}d` : undefined} />
             </Detail>
             <Detail label="Occupancy">{occText(roomState(occ, asset.current_branch, asset.room))}</Detail>
-            <Detail label="General service (monthly)">
+            <Detail label="General service (3-monthly)">
               <ServiceLine next={generalServiceDate(asset)} days={generalDays(asset)} last={asset.last_general_service_date} />
             </Detail>
-            <Detail label="Normal service (3-monthly)">
-              <ServiceLine next={normalServiceDate(asset)} days={normalDays(asset)} last={asset.last_service_date} />
+            <Detail label="Master service (yearly)">
+              <ServiceLine next={masterServiceDate(asset)} days={masterDays(asset)} last={asset.last_service_date} />
             </Detail>
             <Detail label="Installed">{fmtDate(asset.installed_date)}</Detail>
             <Detail label="Life left">

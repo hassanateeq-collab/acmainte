@@ -50,9 +50,9 @@ export async function createAssetAction(
   const expected_life_years =
     Number(formData.get("expected_life_years")) || 10;
   const service_interval_days =
-    Number(formData.get("service_interval_days")) || 90;
+    Number(formData.get("service_interval_days")) || 365; // Master (yearly)
   const general_interval_days =
-    Number(formData.get("general_interval_days")) || 30;
+    Number(formData.get("general_interval_days")) || 90; // General (3-monthly)
 
   if (!home_branch) return { error: "Choose the home branch." };
 
@@ -359,7 +359,7 @@ export async function updateAssetAction(
   const service_interval_days =
     Number(formData.get("service_interval_days")) || a.service_interval_days;
   const general_interval_days =
-    Number(formData.get("general_interval_days")) || a.general_interval_days || 30;
+    Number(formData.get("general_interval_days")) || a.general_interval_days || 90;
 
   const { error } = await admin
     .from("assets")
@@ -378,7 +378,7 @@ export async function updateAssetAction(
   await admin.from("asset_events").insert({
     asset_id: assetId,
     kind: "note",
-    description: `Details updated — room ${room || "store"}, life ${expected_life_years}y, general every ${general_interval_days}d, normal every ${service_interval_days}d`,
+    description: `Details updated — room ${room || "store"}, life ${expected_life_years}y, general every ${general_interval_days}d, master every ${service_interval_days}d`,
     actor_name: actorName(profile),
   });
   revalidateAll();
