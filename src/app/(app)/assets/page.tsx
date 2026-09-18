@@ -1,6 +1,13 @@
 import { requireProfile } from "@/lib/auth";
 import { listAssets, listAllJobs, listBranches, listAssetTypes, jobTotal } from "@/lib/data";
-import { assetStatus, nextServiceDate, lifeLeftYears } from "@/lib/status";
+import {
+  assetStatus,
+  lifeLeftYears,
+  generalServiceDate,
+  masterServiceDate,
+  generalDays,
+  masterDays,
+} from "@/lib/status";
 import { buildAssetRows } from "@/lib/rows";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import PageHeader from "@/components/PageHeader";
@@ -50,7 +57,8 @@ export default async function AssetsPage() {
 
   const clientRows: ClientRow[] = rows.map((r) => {
     const primary = r.interior ?? r.exterior!;
-    const nsd = nextServiceDate(primary);
+    const gsd = generalServiceDate(primary);
+    const msd = masterServiceDate(primary);
     const combinedRepairs =
       (r.interior ? agg.get(r.interior.id)?.repairs ?? 0 : 0) +
       (r.exterior ? agg.get(r.exterior.id)?.repairs ?? 0 : 0);
@@ -65,7 +73,10 @@ export default async function AssetsPage() {
       interior: unit(r.interior),
       exterior: unit(r.exterior),
       swapped: r.swapped,
-      nextService: nsd ? nsd.toISOString() : null,
+      generalService: gsd ? gsd.toISOString() : null,
+      generalDays: generalDays(primary),
+      masterService: msd ? msd.toISOString() : null,
+      masterDays: masterDays(primary),
       lifeLeft: lifeLeftYears(primary),
       repairs: combinedRepairs,
       total: combinedTotal,

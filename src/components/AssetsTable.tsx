@@ -30,7 +30,10 @@ export type ClientRow = {
   interior: ClientUnit;
   exterior: ClientUnit;
   swapped: boolean;
-  nextService: string | null;
+  generalService: string | null;
+  generalDays: number | null;
+  masterService: string | null;
+  masterDays: number | null;
   lifeLeft: number | null;
   repairs: number;
   total: number;
@@ -149,7 +152,8 @@ export default function AssetsTable({
               <th>Room</th>
               <th>Interior</th>
               <th>Exterior</th>
-              <th>Next service</th>
+              <th>General service</th>
+              <th>Master service</th>
               <th>Life left</th>
               <th>Repairs</th>
               <th>Total spent</th>
@@ -159,7 +163,7 @@ export default function AssetsTable({
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={showActions ? 9 : 8} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
+                <td colSpan={showActions ? 10 : 9} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
                   No assets match.
                 </td>
               </tr>
@@ -194,7 +198,26 @@ export default function AssetsTable({
                     <span style={{ color: "var(--muted)" }}>—</span>
                   )}
                 </td>
-                <td>{fmtDate(r.nextService)}</td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  {fmtDate(r.generalService)}
+                  {r.generalDays !== null && (
+                    <div style={{ fontSize: 11.5, color: r.generalDays <= 14 ? "#b45309" : "var(--muted)" }}>
+                      {r.generalDays < 0
+                        ? `overdue ${-r.generalDays}d`
+                        : `in ${r.generalDays}d`}
+                    </div>
+                  )}
+                </td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  {fmtDate(r.masterService)}
+                  {r.masterDays !== null && (
+                    <div style={{ fontSize: 11.5, color: r.masterDays <= 14 ? "#b45309" : "var(--muted)" }}>
+                      {r.masterDays < 0
+                        ? `overdue ${-r.masterDays}d`
+                        : `in ${r.masterDays}d`}
+                    </div>
+                  )}
+                </td>
                 <td>{r.lifeLeft === null ? "—" : `${r.lifeLeft} yr`}</td>
                 <td>{r.repairs}</td>
                 <td>{money(r.total)}</td>
