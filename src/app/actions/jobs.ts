@@ -4,6 +4,7 @@ import { requireProfile } from "@/lib/auth";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notify, branchInbox } from "@/lib/notify";
 import { revalidateAll } from "@/lib/revalidate";
+import { serviceState } from "@/lib/status";
 import type { Asset, Job } from "@/lib/types";
 import type { ActionState } from "./assets";
 
@@ -76,10 +77,32 @@ export async function logJobAction(
   if (error) return { error: error.message };
 
   // Update the right service clock, clear the issue, mark returned from vendor.
-  // A General service updates the monthly clock; a Normal service the quarterly
-  // one. A Repair only clears the issue / vendor state.
+  // A General service resets the 3-monthly clock; a Master service the yearly
+  // one. A Repair only clears the issue / vendor state. Any cycles that were
+  // missed before this (late) service are counted and written to the timeline.
   const patch: Record<string, unknown> = { open_issue: null, at_vendor: false };
   if (type === "Service") {
+    const iv =
+      service_kind === "General"
+        ? asset.general_interval_days || 90
+        : asset.service_interval_days || 365;
+    const base =
+      service_kind === "General" ? asset.last_general_service_date : asset.last_service_date;
+    const st = serviceState(base, asset.installed_date, iv, new Date(date));
+    if (st.missed > 0) {
+      const already =
+        (service_kind === "General" ? asset.general_missed : asset.master_missed) || 0;
+      patch[service_kind === "General" ? "general_missed" : "master_missed"] =
+        already + st.missed;
+      await admin.from("asset_events").insert(
+        st.missedDates.map((d) => ({
+          asset_id: assetId,
+          kind: "missed",
+          description: `Missed ${service_kind} service — was due ${d.toISOString().slice(0, 10)}`,
+          actor_name: actorName(profile),
+        }))
+      );
+    }
     if (service_kind === "General") patch.last_general_service_date = date;
     else patch.last_service_date = date;
   }

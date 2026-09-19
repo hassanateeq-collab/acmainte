@@ -85,6 +85,8 @@ create table if not exists public.assets (
   service_interval_days int not null default 365,         -- Master (yearly) service
   last_general_service_date date,
   general_interval_days int not null default 90,          -- General (3-monthly) service
+  general_missed int not null default 0,                  -- past missed General services
+  master_missed int not null default 0,                   -- past missed Master services
   open_issue text,
   at_vendor boolean not null default false,
   paired_with text references public.assets(id),    -- the connected opposite part

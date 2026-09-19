@@ -4,85 +4,118 @@ export type ServiceKind = "General" | "Master";
 
 const DEFAULT_GENERAL_DAYS = 90; // General service — every 3 months
 const DEFAULT_MASTER_DAYS = 365; // Master service — yearly
+export const GRACE_DAYS = 7; // a due service stays "due" for this many days, then rolls + counts a miss
 
-function addDaysTo(base: string | null, fallback: string | null, days: number): Date | null {
-  const src = base ?? fallback;
-  if (!src) return null;
-  const d = new Date(src);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-
-function daysTo(d: Date | null): number | null {
-  if (!d) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+function midnight(d: Date): Date {
   const x = new Date(d);
   x.setHours(0, 0, 0, 0);
-  return Math.round((x.getTime() - today.getTime()) / 86400000);
+  return x;
+}
+function addDays(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function dayDiff(from: Date, to: Date): number {
+  return Math.round((midnight(to).getTime() - midnight(from).getTime()) / 86400000);
 }
 
-/** Next General (3-monthly) service date. */
-export function generalServiceDate(asset: Asset): Date | null {
-  return addDaysTo(
-    asset.last_general_service_date,
-    asset.installed_date,
-    asset.general_interval_days || DEFAULT_GENERAL_DAYS
-  );
+export type ServiceState = {
+  nextDue: Date | null; // current active due date (rolled past any missed windows)
+  days: number | null; // days from today until nextDue (<= 0 means inside the due window)
+  dueNow: boolean; // today is inside [nextDue, nextDue + grace]
+  daysLeftInWindow: number | null; // days left before this one is missed too
+  missed: number; // cycles missed since the base date (derived)
+  missedDates: Date[]; // the due dates that were missed
+};
+
+/**
+ * Rolling service state. A cycle is "missed" once its due date + grace has fully
+ * passed; the clock then rolls to the next cycle. Purely derived from the base
+ * (last-service or installed) date + interval, so it needs no background job.
+ */
+export function serviceState(
+  base: string | null,
+  installed: string | null,
+  interval: number,
+  asOf?: Date
+): ServiceState {
+  const src = base ?? installed;
+  if (!src) {
+    return { nextDue: null, days: null, dueNow: false, daysLeftInWindow: null, missed: 0, missedDates: [] };
+  }
+  const start = midnight(new Date(src));
+  const today = midnight(asOf ?? new Date());
+  const iv = interval > 0 ? interval : 1;
+
+  let missed = 0;
+  const missedDates: Date[] = [];
+  while (missed < 5000) {
+    const due = addDays(start, (missed + 1) * iv);
+    if (today.getTime() > addDays(due, GRACE_DAYS).getTime()) {
+      missedDates.push(due);
+      missed++;
+    } else break;
+  }
+  const nextDue = addDays(start, (missed + 1) * iv);
+  const days = dayDiff(today, nextDue);
+  const dueNow = today.getTime() >= nextDue.getTime();
+  const daysLeftInWindow = dueNow ? GRACE_DAYS + days : null; // days = negative inside window
+  return { nextDue, days, dueNow, daysLeftInWindow, missed, missedDates };
 }
 
-/** Next Master (yearly) service date. */
-export function masterServiceDate(asset: Asset): Date | null {
-  return addDaysTo(
-    asset.last_service_date,
-    asset.installed_date,
-    asset.service_interval_days || DEFAULT_MASTER_DAYS
-  );
+export function generalState(a: Asset): ServiceState {
+  return serviceState(a.last_general_service_date, a.installed_date, a.general_interval_days || DEFAULT_GENERAL_DAYS);
+}
+export function masterState(a: Asset): ServiceState {
+  return serviceState(a.last_service_date, a.installed_date, a.service_interval_days || DEFAULT_MASTER_DAYS);
 }
 
-export function generalDays(asset: Asset): number | null {
-  return daysTo(generalServiceDate(asset));
+export function generalServiceDate(a: Asset): Date | null {
+  return generalState(a).nextDue;
 }
-export function masterDays(asset: Asset): number | null {
-  return daysTo(masterServiceDate(asset));
+export function masterServiceDate(a: Asset): Date | null {
+  return masterState(a).nextDue;
+}
+export function generalDays(a: Asset): number | null {
+  return generalState(a).days;
+}
+export function masterDays(a: Asset): number | null {
+  return masterState(a).days;
 }
 
-/** The two service cadences, for display. */
-export function serviceLines(asset: Asset): {
-  kind: ServiceKind;
-  date: Date | null;
-  days: number | null;
-}[] {
-  return [
-    { kind: "General", date: generalServiceDate(asset), days: generalDays(asset) },
-    { kind: "Master", date: masterServiceDate(asset), days: masterDays(asset) },
-  ];
+/** Total missed = persisted (recorded at service time) + currently-outstanding (derived). */
+export function generalMissed(a: Asset): number {
+  return (a.general_missed || 0) + generalState(a).missed;
+}
+export function masterMissed(a: Asset): number {
+  return (a.master_missed || 0) + masterState(a).missed;
+}
+export function totalMissed(a: Asset): number {
+  return generalMissed(a) + masterMissed(a);
 }
 
 /** Soonest of the two service dates (keeps existing callers working). */
-export function nextServiceDate(asset: Asset): Date | null {
-  const g = generalServiceDate(asset);
-  const m = masterServiceDate(asset);
+export function nextServiceDate(a: Asset): Date | null {
+  const g = generalServiceDate(a);
+  const m = masterServiceDate(a);
   if (!g) return m;
   if (!m) return g;
   return g < m ? g : m;
 }
 
-/** Days until the soonest due service (negative = overdue). */
-export function daysToService(asset: Asset): number | null {
-  const vals = [generalDays(asset), masterDays(asset)].filter(
-    (v): v is number => v !== null
-  );
+/** Days until the soonest active due date. */
+export function daysToService(a: Asset): number | null {
+  const vals = [generalDays(a), masterDays(a)].filter((v): v is number => v !== null);
   if (vals.length === 0) return null;
   return Math.min(...vals);
 }
 
-/** Derived status, in priority order (see spec §4.4). */
+/** Derived status. A service shows "due" only while inside its 7-day window. */
 export function assetStatus(asset: Asset): AssetStatus {
   if (asset.at_vendor) return "With CoolTech";
   if (asset.open_issue) return "Issue reported";
-  const dts = daysToService(asset);
-  if (dts !== null && dts <= 14) return "Service due";
+  if (generalState(asset).dueNow || masterState(asset).dueNow) return "Service due";
   return "Healthy";
 }
 

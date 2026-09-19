@@ -14,10 +14,11 @@ import {
   nextServiceDate,
   daysToService,
   lifeLeftYears,
-  generalServiceDate,
-  masterServiceDate,
-  generalDays,
-  masterDays,
+  generalState,
+  masterState,
+  generalMissed,
+  masterMissed,
+  type ServiceState,
 } from "@/lib/status";
 import { isSwapped } from "@/lib/rows";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -82,6 +83,14 @@ export default async function AssetRecordPage({
     for (const ed of j.job_edits ?? [])
       timeline.push({ ts: ed.created_at, title: `Edit: ${ed.summary}`, body: `${ed.reason} — ${ed.edited_by_name ?? ""}`, kind: "edit" });
   }
+  // Currently-outstanding missed services (derived from the dates — not yet
+  // "sealed" by a service). Persisted misses already come through as events.
+  const gState = generalState(asset);
+  const mState = masterState(asset);
+  for (const d of gState.missedDates)
+    timeline.push({ ts: d.toISOString(), title: `Missed General service — was due ${fmtDate(d.toISOString())}`, body: "not yet serviced", kind: "missed" });
+  for (const d of mState.missedDates)
+    timeline.push({ ts: d.toISOString(), title: `Missed Master service — was due ${fmtDate(d.toISOString())}`, body: "not yet serviced", kind: "missed" });
   timeline.sort((a, b) => new Date(b.ts).getTime() - new Date(a.ts).getTime());
 
   return (
@@ -143,10 +152,26 @@ export default async function AssetRecordPage({
             </Detail>
             <Detail label="Occupancy">{occText(roomState(occ, asset.current_branch, asset.room))}</Detail>
             <Detail label="General service (3-monthly)">
-              <ServiceLine next={generalServiceDate(asset)} days={generalDays(asset)} last={asset.last_general_service_date} />
+              <ServiceLine state={gState} last={asset.last_general_service_date} />
             </Detail>
             <Detail label="Master service (yearly)">
-              <ServiceLine next={masterServiceDate(asset)} days={masterDays(asset)} last={asset.last_service_date} />
+              <ServiceLine state={mState} last={asset.last_service_date} />
+            </Detail>
+            <Detail label="Missed servicing">
+              {(() => {
+                const g = generalMissed(asset);
+                const m = masterMissed(asset);
+                const total = g + m;
+                if (total === 0) return <span style={{ color: "var(--muted)" }}>None</span>;
+                return (
+                  <span style={{ color: "#b91c1c", fontWeight: 700 }}>
+                    {total}
+                    <span style={{ color: "var(--muted)", fontWeight: 400, fontSize: 12 }}>
+                      {" "}(General {g} · Master {m})
+                    </span>
+                  </span>
+                );
+              })()}
             </Detail>
             <Detail label="Installed">{fmtDate(asset.installed_date)}</Detail>
             <Detail label="Life left">
@@ -205,31 +230,27 @@ function Alert({ tone, text }: { tone: "red" | "violet" | "amber"; text: string 
 }
 
 function ServiceLine({
-  next,
-  days,
+  state,
   last,
 }: {
-  next: Date | null;
-  days: number | null;
+  state: ServiceState;
   last: string | null;
 }) {
+  const { nextDue, days, dueNow, daysLeftInWindow } = state;
   return (
     <div>
-      {fmtDate(next ? next.toISOString() : null)}
+      {fmtDate(nextDue ? nextDue.toISOString() : null)}
       {days !== null && (
         <div
           style={{
             fontSize: 12,
             marginTop: 2,
-            color: days <= 0 ? "#b91c1c" : days <= 14 ? "#b45309" : "var(--muted)",
+            color: dueNow ? "#b91c1c" : "var(--muted)",
           }}
         >
-          {days < 0
-            ? `overdue ${-days} day${-days === 1 ? "" : "s"}`
-            : days === 0
-            ? "due today"
+          {dueNow
+            ? `DUE NOW${daysLeftInWindow !== null ? ` · ${daysLeftInWindow} day${daysLeftInWindow === 1 ? "" : "s"} left` : ""}`
             : `in ${days} day${days === 1 ? "" : "s"}`}
-          {days > 0 && days <= 14 ? " · due" : ""}
         </div>
       )}
       <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 2 }}>

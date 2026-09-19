@@ -4,10 +4,8 @@ import { listAssets, listAllJobs } from "@/lib/data";
 import {
   daysToService,
   assetStatus,
-  generalServiceDate,
-  masterServiceDate,
-  generalDays,
-  masterDays,
+  generalState,
+  masterState,
 } from "@/lib/status";
 import { fmtDate } from "@/lib/format";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -23,8 +21,8 @@ export const dynamic = "force-dynamic";
 function progressOf(a: Asset): { done: boolean; label: string; note?: string } {
   if (a.at_vendor) return { done: false, label: "Pending", note: "with CoolTech" };
   if (a.open_issue) return { done: false, label: "Pending", note: "issue reported" };
-  const dts = daysToService(a);
-  if (dts !== null && dts <= 14) return { done: false, label: "Pending", note: "service due" };
+  if (generalState(a).dueNow || masterState(a).dueNow)
+    return { done: false, label: "Pending", note: "service due" };
   return { done: true, label: "Service done" };
 }
 
@@ -72,12 +70,17 @@ export default async function ServicePage() {
           {rows.map(({ a, d }) => {
             const m = meta.get(a.id);
             const prog = progressOf(a);
-            const gDays = generalDays(a);
-            const mDays = masterDays(a);
-            const gDue = gDays !== null && gDays <= 14;
-            const mDue = mDays !== null && mDays <= 14;
-            const fmtDays = (v: number | null) =>
-              v === null ? "" : v < 0 ? `overdue ${-v}d` : `in ${v}d`;
+            const gs = generalState(a);
+            const ms = masterState(a);
+            const gDue = gs.dueNow;
+            const mDue = ms.dueNow;
+            const fmtState = (s: typeof gs) =>
+              s.dueNow
+                ? `DUE${s.daysLeftInWindow !== null ? ` · ${s.daysLeftInWindow}d left` : ""}`
+                : s.days !== null
+                ? `in ${s.days}d`
+                : "";
+            const missed = (a.general_missed || 0) + gs.missed + (a.master_missed || 0) + ms.missed;
             return (
               <tr key={a.id}>
                 <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
@@ -92,12 +95,17 @@ export default async function ServicePage() {
                   )}
                 </td>
                 <td style={{ fontSize: 13 }}>
-                  <div style={{ color: gDue ? "#b45309" : "var(--muted)" }}>
-                    <strong style={{ color: "var(--ink)" }}>Gen:</strong> {fmtDate(generalServiceDate(a)?.toISOString() ?? null)} · {fmtDays(gDays)}
+                  <div style={{ color: gDue ? "#b91c1c" : "var(--muted)" }}>
+                    <strong style={{ color: "var(--ink)" }}>Gen:</strong> {fmtDate(gs.nextDue?.toISOString() ?? null)} · {fmtState(gs)}
                   </div>
-                  <div style={{ color: mDue ? "#b45309" : "var(--muted)", marginTop: 2 }}>
-                    <strong style={{ color: "var(--ink)" }}>Master:</strong> {fmtDate(masterServiceDate(a)?.toISOString() ?? null)} · {fmtDays(mDays)}
+                  <div style={{ color: mDue ? "#b91c1c" : "var(--muted)", marginTop: 2 }}>
+                    <strong style={{ color: "var(--ink)" }}>Master:</strong> {fmtDate(ms.nextDue?.toISOString() ?? null)} · {fmtState(ms)}
                   </div>
+                  {missed > 0 && (
+                    <div style={{ fontSize: 11.5, color: "#b91c1c", fontWeight: 700, marginTop: 2 }}>
+                      {missed} missed
+                    </div>
+                  )}
                 </td>
                 <td>{m?.repairs ?? 0}</td>
                 <td style={{ maxWidth: 220, color: "var(--muted)", fontSize: 13 }}>{m?.lastProblem ?? "—"}</td>

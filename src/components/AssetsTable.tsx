@@ -32,8 +32,14 @@ export type ClientRow = {
   swapped: boolean;
   generalService: string | null;
   generalDays: number | null;
+  generalDueNow: boolean;
+  generalLeft: number | null;
+  generalMissed: number;
   masterService: string | null;
   masterDays: number | null;
+  masterDueNow: boolean;
+  masterLeft: number | null;
+  masterMissed: number;
   lifeLeft: number | null;
   repairs: number;
   total: number;
@@ -154,6 +160,7 @@ export default function AssetsTable({
               <th>Exterior</th>
               <th>General service</th>
               <th>Master service</th>
+              <th>Missed</th>
               <th>Life left</th>
               <th>Repairs</th>
               <th>Total spent</th>
@@ -163,7 +170,7 @@ export default function AssetsTable({
           <tbody>
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={showActions ? 10 : 9} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
+                <td colSpan={showActions ? 11 : 10} style={{ textAlign: "center", color: "var(--muted)", padding: 30 }}>
                   No assets match.
                 </td>
               </tr>
@@ -199,24 +206,13 @@ export default function AssetsTable({
                   )}
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  {fmtDate(r.generalService)}
-                  {r.generalDays !== null && (
-                    <div style={{ fontSize: 11.5, color: r.generalDays <= 14 ? "#b45309" : "var(--muted)" }}>
-                      {r.generalDays < 0
-                        ? `overdue ${-r.generalDays}d`
-                        : `in ${r.generalDays}d`}
-                    </div>
-                  )}
+                  <ServiceCell date={r.generalService} days={r.generalDays} dueNow={r.generalDueNow} left={r.generalLeft} />
                 </td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  {fmtDate(r.masterService)}
-                  {r.masterDays !== null && (
-                    <div style={{ fontSize: 11.5, color: r.masterDays <= 14 ? "#b45309" : "var(--muted)" }}>
-                      {r.masterDays < 0
-                        ? `overdue ${-r.masterDays}d`
-                        : `in ${r.masterDays}d`}
-                    </div>
-                  )}
+                  <ServiceCell date={r.masterService} days={r.masterDays} dueNow={r.masterDueNow} left={r.masterLeft} />
+                </td>
+                <td style={{ whiteSpace: "nowrap" }}>
+                  <MissedCell general={r.generalMissed} master={r.masterMissed} />
                 </td>
                 <td>{r.lifeLeft === null ? "—" : `${r.lifeLeft} yr`}</td>
                 <td>{r.repairs}</td>
@@ -251,5 +247,57 @@ export default function AssetsTable({
         </table>
       </div>
     </div>
+  );
+}
+
+function ServiceCell({
+  date,
+  days,
+  dueNow,
+  left,
+}: {
+  date: string | null;
+  days: number | null;
+  dueNow: boolean;
+  left: number | null;
+}) {
+  return (
+    <>
+      {fmtDate(date)}
+      {days !== null && (
+        <div style={{ fontSize: 11.5, color: dueNow ? "#b91c1c" : "var(--muted)" }}>
+          {dueNow
+            ? `DUE${left !== null ? ` · ${left}d left` : ""}`
+            : `in ${days}d`}
+        </div>
+      )}
+    </>
+  );
+}
+
+function MissedCell({ general, master }: { general: number; master: number }) {
+  const total = general + master;
+  if (total === 0) return <span style={{ color: "var(--muted)" }}>0</span>;
+  return (
+    <span>
+      <span
+        style={{
+          display: "inline-block",
+          minWidth: 20,
+          textAlign: "center",
+          padding: "1px 7px",
+          borderRadius: 999,
+          background: "#fef2f2",
+          color: "#b91c1c",
+          fontWeight: 700,
+          fontSize: 12.5,
+        }}
+      >
+        {total}
+      </span>
+      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+        Gen {general} · Mas {master}
+      </div>
+    </span>
   );
 }

@@ -43,6 +43,8 @@ export type Asset = {
   service_interval_days: number;
   last_general_service_date: string | null;
   general_interval_days: number;
+  general_missed: number;
+  master_missed: number;
   open_issue: string | null;
   at_vendor: boolean;
   paired_with: string | null;

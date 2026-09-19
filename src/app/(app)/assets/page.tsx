@@ -3,10 +3,10 @@ import { listAssets, listAllJobs, listBranches, listAssetTypes, jobTotal } from 
 import {
   assetStatus,
   lifeLeftYears,
-  generalServiceDate,
-  masterServiceDate,
-  generalDays,
-  masterDays,
+  generalState,
+  masterState,
+  generalMissed,
+  masterMissed,
 } from "@/lib/status";
 import { buildAssetRows } from "@/lib/rows";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
@@ -57,8 +57,8 @@ export default async function AssetsPage() {
 
   const clientRows: ClientRow[] = rows.map((r) => {
     const primary = r.interior ?? r.exterior!;
-    const gsd = generalServiceDate(primary);
-    const msd = masterServiceDate(primary);
+    const gs = generalState(primary);
+    const ms = masterState(primary);
     const combinedRepairs =
       (r.interior ? agg.get(r.interior.id)?.repairs ?? 0 : 0) +
       (r.exterior ? agg.get(r.exterior.id)?.repairs ?? 0 : 0);
@@ -73,10 +73,16 @@ export default async function AssetsPage() {
       interior: unit(r.interior),
       exterior: unit(r.exterior),
       swapped: r.swapped,
-      generalService: gsd ? gsd.toISOString() : null,
-      generalDays: generalDays(primary),
-      masterService: msd ? msd.toISOString() : null,
-      masterDays: masterDays(primary),
+      generalService: gs.nextDue ? gs.nextDue.toISOString() : null,
+      generalDays: gs.days,
+      generalDueNow: gs.dueNow,
+      generalLeft: gs.daysLeftInWindow,
+      generalMissed: generalMissed(primary),
+      masterService: ms.nextDue ? ms.nextDue.toISOString() : null,
+      masterDays: ms.days,
+      masterDueNow: ms.dueNow,
+      masterLeft: ms.daysLeftInWindow,
+      masterMissed: masterMissed(primary),
       lifeLeft: lifeLeftYears(primary),
       repairs: combinedRepairs,
       total: combinedTotal,
