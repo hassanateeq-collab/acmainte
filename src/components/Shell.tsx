@@ -7,6 +7,7 @@ import type { NavItem } from "@/lib/nav";
 import type { Profile } from "@/lib/types";
 import { roleLabel } from "@/lib/perms";
 import { signOutAction } from "@/app/actions/session";
+import LiveNotifier from "@/components/LiveNotifier";
 
 export default function Shell({
   profile,
@@ -114,6 +115,7 @@ export default function Shell({
 
   return (
     <div style={{ minHeight: "100vh" }}>
+      <LiveNotifier />
       {/* Top bar (mobile) */}
       <div
         className="topbar-mobile"
