@@ -76,6 +76,9 @@ export default function AssetsTable({
     STATUSES.includes(initialStatus) ? initialStatus : "All"
   );
   const [q, setQ] = useState("");
+  // Collapsible asset-type groups. Air conditioners are the first (and, for
+  // now, only) type; it starts open. Clicking the "AC" row toggles it.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({ AC: true });
 
   const filtered = useMemo(() => {
     const query = q.trim().toLowerCase();
@@ -175,7 +178,39 @@ export default function AssetsTable({
                 </td>
               </tr>
             )}
-            {filtered.map((r) => (
+            {filtered.length > 0 && (
+              <tr>
+                <td
+                  colSpan={showActions ? 11 : 10}
+                  onClick={() => setOpenGroups((g) => ({ ...g, AC: !g.AC }))}
+                  style={{
+                    cursor: "pointer",
+                    background: "#f6f7f9",
+                    fontWeight: 800,
+                    userSelect: "none",
+                    padding: "10px 14px",
+                  }}
+                >
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        display: "inline-block",
+                        transition: "transform .15s ease",
+                        transform: openGroups.AC ? "rotate(90deg)" : "rotate(0deg)",
+                        color: "var(--brand)",
+                      }}
+                    >
+                      ▶
+                    </span>
+                    AC — Air conditioners
+                    <span style={{ fontWeight: 600, color: "var(--muted)" }}>
+                      ({filtered.length})
+                    </span>
+                  </span>
+                </td>
+              </tr>
+            )}
+            {openGroups.AC && filtered.map((r) => (
               <tr key={r.key}>
                 <td>{r.branch}</td>
                 <td>
