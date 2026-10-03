@@ -114,6 +114,7 @@ export function daysToService(a: Asset): number | null {
 /** Derived status. A service shows "due" only while inside its 7-day window. */
 export function assetStatus(asset: Asset): AssetStatus {
   if (asset.at_vendor) return "With CoolTech";
+  if (asset.under_repair) return "Under repair";
   if (asset.open_issue) return "Issue reported";
   if (generalState(asset).dueNow || masterState(asset).dueNow) return "Service due";
   return "Healthy";
@@ -127,6 +128,8 @@ export function statusColor(status: AssetStatus): {
   switch (status) {
     case "With CoolTech":
       return { bg: "bg-violet-50", text: "text-violet-700", dot: "bg-violet-500" };
+    case "Under repair":
+      return { bg: "bg-sky-50", text: "text-sky-700", dot: "bg-sky-500" };
     case "Issue reported":
       return { bg: "bg-red-50", text: "text-red-700", dot: "bg-red-500" };
     case "Service due":

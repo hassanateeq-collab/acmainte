@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import Modal from "@/components/Modal";
 import {
   reportIssueAction,
@@ -13,6 +13,7 @@ import { logJobAction, addChargeAction } from "@/app/actions/jobs";
 import DeleteAsset from "./DeleteAsset";
 import EditAsset from "./EditAsset";
 import QuickComplete from "./QuickComplete";
+import RepairActions from "./RepairActions";
 import SpareToggle from "./SpareToggle";
 import MoveBack from "./MoveBack";
 import { SubmitButton, FormError, useOnSuccess, Field, Row } from "./forms/bits";
@@ -65,22 +66,28 @@ export default function AssetActions({
       )}
 
       <Modal
-        triggerLabel="Log service / repair"
+        triggerLabel="Log service"
         triggerClassName="btn btn-primary"
-        title={`Log service / repair — ${asset.id}`}
+        title={`Log service — ${asset.id}`}
         subtitle="Sets the last-service date, clears any open issue, and marks the unit returned from CoolTech."
       >
         {(close) => <LogJob assetId={asset.id} close={close} />}
       </Modal>
+
+      {canComplete && (
+        <RepairActions
+          assetId={asset.id}
+          underRepair={!!asset.under_repair}
+          startedAt={asset.repair_started_at}
+          note={asset.repair_note}
+        />
+      )}
 
       {canComplete && (generalDue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Service" serviceKind="General" label="✓ General service done" />
       )}
       {canComplete && (masterDue || atVendor) && (
         <QuickComplete assetId={asset.id} kind="Service" serviceKind="Master" label="✓ Master service done" />
-      )}
-      {canComplete && (hasIssue || atVendor) && (
-        <QuickComplete assetId={asset.id} kind="Repair" />
       )}
 
       {/* When neither service is due, show when the next one is. */}
@@ -199,25 +206,15 @@ function LogJob({ assetId, close }: { assetId: string; close: () => void }) {
   const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
   useOnSuccess(state, close);
   const today = new Date().toISOString().slice(0, 10);
-  // One dropdown drives everything: General/Master are services, Repair is a
-  // repair. We send the derived job `type` in a hidden field.
-  const [kind, setKind] = useState("General");
-  const isRepair = kind === "Repair";
   return (
     <form action={action}>
       <FormError state={state} />
       <input type="hidden" name="asset_id" value={assetId} />
-      <input type="hidden" name="type" value={isRepair ? "Repair" : "Service"} />
+      <input type="hidden" name="type" value="Service" />
       <Field label="Service type">
-        <select
-          name="service_kind"
-          className="select"
-          value={kind}
-          onChange={(e) => setKind(e.target.value)}
-        >
+        <select name="service_kind" className="select" defaultValue="General">
           <option value="General">General service (3-monthly)</option>
           <option value="Master">Master service (yearly)</option>
-          <option value="Repair">Repair</option>
         </select>
       </Field>
       <Field label="Date">

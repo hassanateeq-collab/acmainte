@@ -47,6 +47,9 @@ export type Asset = {
   master_missed: number;
   open_issue: string | null;
   at_vendor: boolean;
+  under_repair: boolean;
+  repair_started_at: string | null;
+  repair_note: string | null;
   paired_with: string | null;
   is_spare: boolean;
   created_at: string;
@@ -130,6 +133,7 @@ export type Notification = {
 
 export type AssetStatus =
   | "With CoolTech"
+  | "Under repair"
   | "Issue reported"
   | "Service due"
   | "Healthy";

@@ -4,7 +4,7 @@ import { listAssets } from "@/lib/data";
 import { getAllOccupancy, roomState, occText } from "@/lib/pms";
 import PageHeader from "@/components/PageHeader";
 import PickupInline from "@/components/PickupInline";
-import QuickComplete from "@/components/QuickComplete";
+import RepairActions from "@/components/RepairActions";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +16,8 @@ export default async function IssuesPage() {
       ? assets.filter((a) => a.current_branch === profile.branch_code)
       : assets;
 
-  const reported = inScope.filter((a) => a.open_issue && !a.at_vendor);
+  const reported = inScope.filter((a) => a.open_issue && !a.at_vendor && !a.under_repair);
+  const underRepair = inScope.filter((a) => a.under_repair);
   const workshop = inScope.filter((a) => a.at_vendor);
   const canPickup = profile.role === "admin" || profile.role === "branch_manager";
 
@@ -42,10 +43,41 @@ export default async function IssuesPage() {
                 <td style={{ maxWidth: 320 }}>{a.open_issue}</td>
                 <td>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <QuickComplete assetId={a.id} kind="Repair" label="✓ Repaired" />
-                    <Link href={`/assets/${a.id}`} className="btn btn-sm">Details / bill</Link>
+                    {canPickup && <RepairActions assetId={a.id} underRepair={false} />}
+                    <Link href={`/assets/${a.id}`} className="btn btn-sm">Details</Link>
                     {canPickup && <PickupInline assetId={a.id} />}
                   </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2 style={{ fontSize: 15, fontWeight: 800, margin: "0 0 10px" }}>Under repair</h2>
+      <div className="card table-wrap" style={{ marginBottom: 24 }}>
+        <table className="data">
+          <thead><tr><th>Unit</th><th>Branch / room</th><th>Issue</th><th>Actions</th></tr></thead>
+          <tbody>
+            {underRepair.length === 0 && (
+              <tr><td colSpan={4} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>Nothing under repair.</td></tr>
+            )}
+            {underRepair.map((a) => (
+              <tr key={a.id}>
+                <td><Link href={`/assets/${a.id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{a.id}</Link></td>
+                <td>{a.current_branch}{a.room && a.room.toLowerCase() !== "store" ? ` · Room ${a.room}` : " · Store"}</td>
+                <td style={{ maxWidth: 320 }}>{a.repair_note || a.open_issue || "—"}</td>
+                <td>
+                  {canPickup ? (
+                    <RepairActions
+                      assetId={a.id}
+                      underRepair
+                      startedAt={a.repair_started_at}
+                      note={a.repair_note}
+                    />
+                  ) : (
+                    <Link href={`/assets/${a.id}`} className="btn btn-sm">Details</Link>
+                  )}
                 </td>
               </tr>
             ))}

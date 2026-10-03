@@ -119,6 +119,107 @@ export async function logJobAction(
   return { ok: true };
 }
 
+/**
+ * Phase 1 of a repair: mark the AC "Under repair". No bill yet — the cost,
+ * the issue, and the item replaced are captured when the repair is marked
+ * done (completeRepairAction).
+ */
+export async function startRepairAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  const assetId = String(formData.get("asset_id") || "").trim();
+  const note = String(formData.get("note") || "").trim() || null;
+
+  const asset = await getAsset(assetId);
+  if (!asset) return { error: "Asset not found — refresh and try again." };
+  if (!canLog(profile.role, profile.branch_code, asset))
+    return { error: "You cannot start a repair on this asset." };
+  if (asset.under_repair) return { error: "This AC is already under repair." };
+
+  const admin = supabaseAdmin();
+  const { error } = await admin
+    .from("assets")
+    .update({
+      under_repair: true,
+      repair_started_at: new Date().toISOString(),
+      repair_note: note,
+    })
+    .eq("id", assetId);
+  if (error) return { error: error.message };
+
+  await admin.from("asset_events").insert({
+    asset_id: assetId,
+    kind: "repair_started",
+    description: `Repair started${note ? `: ${note}` : ""}`,
+    actor_name: actorName(profile),
+  });
+  await notify(
+    branchInbox(asset.current_branch),
+    `Repair started on ${assetId}${note ? ` — ${note}` : ""}`,
+    { kind: "repair_started", asset_id: assetId }
+  );
+  revalidateAll();
+  return { ok: true };
+}
+
+/**
+ * Phase 2 of a repair: mark it done. Captures the bill, the issue, and the
+ * item replaced, logs the Repair job, clears the under-repair / issue / vendor
+ * flags, and counts +1 repair.
+ */
+export async function completeRepairAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const profile = await requireProfile();
+  const assetId = String(formData.get("asset_id") || "").trim();
+  const date = String(formData.get("date") || "") || new Date().toISOString().slice(0, 10);
+  const problem = String(formData.get("problem") || "").trim() || null;
+  const work_done = String(formData.get("work_done") || "").trim() || null;
+  const bill_amount = Number(formData.get("bill_amount")) || 0;
+  const days_taken = Number(formData.get("days_taken")) || 0;
+
+  const asset = await getAsset(assetId);
+  if (!asset) return { error: "Asset not found — refresh and try again." };
+  if (!canLog(profile.role, profile.branch_code, asset))
+    return { error: "You cannot complete a repair on this asset." };
+
+  const admin = supabaseAdmin();
+  const { error } = await admin.from("jobs").insert({
+    asset_id: assetId,
+    date,
+    type: "Repair",
+    problem: problem ?? asset.repair_note,
+    work_done,
+    bill_amount,
+    days_taken,
+    created_by: profile.id,
+    created_by_name: actorName(profile),
+  });
+  if (error) return { error: error.message };
+
+  await admin
+    .from("assets")
+    .update({
+      under_repair: false,
+      repair_started_at: null,
+      repair_note: null,
+      open_issue: null,
+      at_vendor: false,
+    })
+    .eq("id", assetId);
+
+  await notify(
+    branchInbox(asset.current_branch),
+    `Repair done on ${assetId} — ${rs(bill_amount)}${work_done ? ` · ${work_done}` : ""}`,
+    { kind: "repair_done", asset_id: assetId }
+  );
+  revalidateAll();
+  return { ok: true };
+}
+
 /** Add a charge — either onto an existing job, or as a standalone Charge line. */
 export async function addChargeAction(
   _prev: ActionState,

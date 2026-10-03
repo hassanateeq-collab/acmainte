@@ -169,7 +169,10 @@ async function resolveFir(
       created_by: null,
       created_by_name: "FIR portal",
     });
-    await admin.from("assets").update({ open_issue: null }).eq("id", id);
+    await admin
+      .from("assets")
+      .update({ open_issue: null, under_repair: false, repair_started_at: null, repair_note: null })
+      .eq("id", id);
     await admin.from("asset_events").insert({
       asset_id: id,
       kind: "repair",
