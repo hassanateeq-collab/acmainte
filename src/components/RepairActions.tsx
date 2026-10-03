@@ -55,10 +55,14 @@ export default function RepairActions({
 function StartForm({ assetId, close }: { assetId: string; close: () => void }) {
   const [state, action] = useActionState<ActionState, FormData>(startRepairAction, {});
   useOnSuccess(state, close);
+  const today = new Date().toISOString().slice(0, 10);
   return (
     <form action={action}>
       <FormError state={state} />
       <input type="hidden" name="asset_id" value={assetId} />
+      <Field label="Repair started on">
+        <input type="date" name="date" className="input" defaultValue={today} />
+      </Field>
       <Field label="What looks wrong? (optional)">
         <textarea
           name="note"

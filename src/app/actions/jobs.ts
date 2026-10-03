@@ -131,6 +131,9 @@ export async function startRepairAction(
   const profile = await requireProfile();
   const assetId = String(formData.get("asset_id") || "").trim();
   const note = String(formData.get("note") || "").trim() || null;
+  const date = String(formData.get("date") || "").trim();
+  // Chosen start date (date-only) → timestamp; fall back to now.
+  const startedAt = date ? new Date(`${date}T00:00:00`).toISOString() : new Date().toISOString();
 
   const asset = await getAsset(assetId);
   if (!asset) return { error: "Asset not found — refresh and try again." };
@@ -143,7 +146,7 @@ export async function startRepairAction(
     .from("assets")
     .update({
       under_repair: true,
-      repair_started_at: new Date().toISOString(),
+      repair_started_at: startedAt,
       repair_note: note,
     })
     .eq("id", assetId);
@@ -152,7 +155,7 @@ export async function startRepairAction(
   await admin.from("asset_events").insert({
     asset_id: assetId,
     kind: "repair_started",
-    description: `Repair started${note ? `: ${note}` : ""}`,
+    description: `Repair started${date ? ` (${date})` : ""}${note ? `: ${note}` : ""}`,
     actor_name: actorName(profile),
   });
   await notify(
