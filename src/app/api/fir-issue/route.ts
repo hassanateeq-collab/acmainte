@@ -56,34 +56,54 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: linkErr.message }, { status: 500 });
   }
 
-  // Find the AC(s) at that branch + room and flag them.
-  let assetIds: string[] = [];
-  if (room) {
-    const { data: assets } = await admin
-      .from("assets")
-      .select("id")
-      .eq("current_branch", code)
-      .eq("room", room);
-    assetIds = (assets ?? []).map((a) => a.id as string);
-    for (const id of assetIds) {
-      await admin
-        .from("assets")
-        .update({ open_issue: `AC issue (${firNo}): ${title}` })
-        .eq("id", id);
-      await admin.from("asset_events").insert({
-        asset_id: id,
-        kind: "issue",
-        description: `AC issue reported from FIR ${firNo}: ${title}`,
-        actor_name: "FIR portal",
-      });
-    }
-    await admin
-      .from("fir_links")
-      .update({ asset_ids: assetIds })
-      .eq("fir_issue_id", rec.id);
+  // Which AC(s) is this about? Match the FIR room/location — and, when those are
+  // empty (Slack voice reports often are), the title/description text — against
+  // the branch's asset rooms/areas (e.g. "517", "Reception", "Cafe").
+  const { data: branchAssets } = await admin
+    .from("assets")
+    .select("id, room")
+    .eq("current_branch", code);
+  const roomed = ((branchAssets ?? []) as { id: string; room: string | null }[]).filter(
+    (a) => a.room && a.room.trim().toLowerCase() !== "store"
+  ) as { id: string; room: string }[];
+
+  const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  const direct = new Set([norm(rec.room_no), norm(rec.location)].filter(Boolean));
+  let matched = roomed.filter((a) => direct.has(norm(a.room)));
+  if (matched.length === 0) {
+    const text = `${rec.title ?? ""} ${rec.description ?? ""}`.toLowerCase();
+    matched = roomed.filter((a) =>
+      new RegExp(`(^|[^a-z0-9])${esc(norm(a.room))}([^a-z0-9]|$)`).test(text)
+    );
   }
 
-  const where = room ? ` Room ${room}` : rec.location ? ` (${rec.location})` : "";
+  const assetIds = matched.map((a) => a.id);
+  for (const id of assetIds) {
+    await admin
+      .from("assets")
+      .update({ open_issue: `AC issue (${firNo}): ${title}` })
+      .eq("id", id);
+    await admin.from("asset_events").insert({
+      asset_id: id,
+      kind: "issue",
+      description: `AC issue reported from FIR ${firNo}: ${title}`,
+      actor_name: "FIR portal",
+    });
+  }
+  if (assetIds.length) {
+    await admin.from("fir_links").update({ asset_ids: assetIds }).eq("fir_issue_id", rec.id);
+  }
+
+  const matchedRoom = matched.length ? matched[0].room : "";
+  const where = room
+    ? ` Room ${room}`
+    : rec.location
+    ? ` (${rec.location})`
+    : matchedRoom
+    ? ` ${matchedRoom}`
+    : "";
   await notify(
     ["repair", ...branchInbox(code)],
     `AC issue in ${code}${where} — ${title} (${firNo})${assetIds.length ? "" : " · no matching AC on record"}`,

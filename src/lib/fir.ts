@@ -27,6 +27,7 @@ export type FirIssue = {
   room_no?: string | null;
   location?: string | null;
   title?: string | null;
+  description?: string | null;
   status?: string | null;
   deleted?: boolean | null;
 };
