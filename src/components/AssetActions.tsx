@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import Modal from "@/components/Modal";
 import {
   reportIssueAction,
@@ -199,24 +199,27 @@ function LogJob({ assetId, close }: { assetId: string; close: () => void }) {
   const [state, action] = useActionState<ActionState, FormData>(logJobAction, {});
   useOnSuccess(state, close);
   const today = new Date().toISOString().slice(0, 10);
+  // One dropdown drives everything: General/Master are services, Repair is a
+  // repair. We send the derived job `type` in a hidden field.
+  const [kind, setKind] = useState("General");
+  const isRepair = kind === "Repair";
   return (
     <form action={action}>
       <FormError state={state} />
       <input type="hidden" name="asset_id" value={assetId} />
-      <Row>
-        <Field label="Type">
-          <select name="type" className="select" defaultValue="Service">
-            <option>Service</option>
-            <option>Repair</option>
-          </select>
-        </Field>
-        <Field label="Service type (for a service)">
-          <select name="service_kind" className="select" defaultValue="General">
-            <option value="General">General (3-monthly)</option>
-            <option value="Master">Master (yearly)</option>
-          </select>
-        </Field>
-      </Row>
+      <input type="hidden" name="type" value={isRepair ? "Repair" : "Service"} />
+      <Field label="Service type">
+        <select
+          name="service_kind"
+          className="select"
+          value={kind}
+          onChange={(e) => setKind(e.target.value)}
+        >
+          <option value="General">General service (3-monthly)</option>
+          <option value="Master">Master service (yearly)</option>
+          <option value="Repair">Repair</option>
+        </select>
+      </Field>
       <Field label="Date">
         <input type="date" name="date" className="input" defaultValue={today} />
       </Field>
