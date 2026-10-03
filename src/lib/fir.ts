@@ -29,5 +29,21 @@ export type FirIssue = {
   title?: string | null;
   description?: string | null;
   status?: string | null;
+  completion_notes?: string | null;
+  completed_at?: string | null;
+  closed_at?: string | null;
+  vendor_completed_at?: string | null;
   deleted?: boolean | null;
 };
+
+/** FIR statuses that mean the issue is finished (the AC repair is done). */
+export function firIsDone(rec: {
+  status?: string | null;
+  completed_at?: string | null;
+  closed_at?: string | null;
+}): boolean {
+  const s = String(rec.status ?? "").trim().toLowerCase();
+  if (/(^|_)(completed|complete|closed|resolved|done|verified|fixed)($|_)/.test(s))
+    return true;
+  return Boolean(rec.completed_at || rec.closed_at);
+}

@@ -86,6 +86,7 @@ export type Job = {
   created_by_name: string | null;
   created_at: string;
   deleted: boolean;
+  from_fir?: boolean; // auto-logged from a resolved FIR issue (no manual date)
 };
 
 export type JobCharge = {

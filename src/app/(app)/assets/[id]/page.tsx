@@ -75,8 +75,12 @@ export default async function AssetRecordPage({
     const extras = (j.job_charges ?? []).map((c) => `${c.label} ${money(c.amount)}`).join(", ");
     timeline.push({
       ts: j.created_at || j.date,
-      title: `${j.type}${j.problem ? `: ${j.problem}` : ""}`,
-      body: [j.work_done, extras ? `Additional: ${extras}` : "", `by ${j.created_by_name ?? "—"}`].filter(Boolean).join(" · "),
+      title: `${j.type}${j.from_fir ? " (via FIR)" : ""}${j.problem ? `: ${j.problem}` : ""}`,
+      body: [
+        j.work_done,
+        extras ? `Additional: ${extras}` : "",
+        j.from_fir ? "auto-logged from FIR — no manual service date" : `by ${j.created_by_name ?? "—"}`,
+      ].filter(Boolean).join(" · "),
       amount: jobTotal(j),
       kind: "job",
     });

@@ -145,10 +145,11 @@ export default async function BillsPage({
               const add = charges.reduce((s, c) => s + Number(c.amount || 0), 0);
               return (
                 <tr key={j.id}>
-                  <td style={{ whiteSpace: "nowrap" }}>{fmtDate(j.date)}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{j.from_fir ? "—" : fmtDate(j.date)}</td>
                   <td><Link href={`/assets/${j.asset_id}`} style={{ fontWeight: 600, color: "var(--brand-ink)" }}>{j.asset_id}</Link></td>
                   <td>
                     {j.type === "Charge" ? <Tag>Charge</Tag> : j.type === "Repair" ? <Tag tone="amber">Repair</Tag> : <Tag tone="brand">Service</Tag>}
+                    {j.from_fir && <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 3 }}>via FIR</div>}
                   </td>
                   <td style={{ maxWidth: 240 }}>
                     {j.problem}
