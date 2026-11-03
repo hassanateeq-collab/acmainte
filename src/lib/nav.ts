@@ -15,6 +15,7 @@ export function navFor(role: Role): NavItem[] {
     { href: "/move", label: "Move" },
     { href: "/approvals", label: "Approvals", badgeKey: "transfers" },
     { href: "/service", label: "Service & repairs" },
+    { href: "/history", label: "History" },
     { href: "/bills", label: "Bills" },
     { href: "/notifications", label: "Notifications", badgeKey: "notifications" },
   ];

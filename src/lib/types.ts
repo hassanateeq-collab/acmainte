@@ -120,6 +120,16 @@ export type AssetEvent = {
   created_at: string;
 };
 
+export type FirHistory = {
+  fir_issue_id: string;
+  fir_no: string | null;
+  branch: string | null;
+  room_no: string | null;
+  asset_ids: string[] | null;
+  resolved_at: string | null;
+  created_at: string;
+};
+
 export type Notification = {
   id: string;
   audience: string;

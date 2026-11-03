@@ -5,6 +5,7 @@ import type {
   AssetEvent,
   AssetType,
   Branch,
+  FirHistory,
   Job,
   JobCharge,
   JobEdit,
@@ -169,6 +170,21 @@ export async function listProfiles(): Promise<Profile[]> {
     .select("*")
     .order("created_at");
   return (data as Profile[]) ?? [];
+}
+
+/**
+ * FIR AC-issue history. Each row is an issue received from the FIR portal:
+ * which branch/room, which AC(s) it was linked to, when it came in, and when
+ * it was resolved (resolution auto-logs a repair). Scoped per branch.
+ */
+export async function listFirHistory(branch?: string | null): Promise<FirHistory[]> {
+  let q = supabaseAdmin()
+    .from("fir_links")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (branch) q = q.eq("branch", branch);
+  const { data } = await q;
+  return (data as FirHistory[]) ?? [];
 }
 
 /** Total money on a job = bill + additional charges. */
