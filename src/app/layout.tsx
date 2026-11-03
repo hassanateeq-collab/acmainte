@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Hamsun Assets — Maintenance Portal",
+  title: "Preventive Maintenance",
   description:
     "The single record of every asset: where it is, what it is connected to, when it needs service, and what it has cost.",
 };

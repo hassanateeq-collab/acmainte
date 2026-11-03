@@ -105,8 +105,8 @@ export default function Shell({
         H
       </div>
       <div>
-        <div style={{ fontWeight: 800, fontSize: 15, lineHeight: 1 }}>
-          Hamsun Assets
+        <div style={{ fontWeight: 800, fontSize: 15, lineHeight: 1.15 }}>
+          Preventive Maintenance
         </div>
         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{scopeLabel}</div>
       </div>

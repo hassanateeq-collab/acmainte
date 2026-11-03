@@ -70,7 +70,7 @@ export default async function BillsPage({
 
       {/* Shown only when printing / saving as PDF */}
       <div className="print-only" style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 20, fontWeight: 800 }}>Hamsun Assets — Bills</div>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>Preventive Maintenance — Bills</div>
         <div style={{ fontSize: 12, color: "#555" }}>
           {profile.role === "branch_manager" ? `Branch ${profile.branch_code}` : "All branches"} ·
           Generated {new Date().toLocaleString("en-GB")}

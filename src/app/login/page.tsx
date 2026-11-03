@@ -57,7 +57,7 @@ export default function LoginPage() {
           >
             H
           </div>
-          <div style={{ fontWeight: 800, fontSize: 18 }}>Hamsun Assets</div>
+          <div style={{ fontWeight: 800, fontSize: 18 }}>Preventive Maintenance</div>
         </div>
         <p style={{ color: "var(--muted)", fontSize: 13.5, margin: "6px 0 22px" }}>
           Sign in to the asset &amp; maintenance portal.
