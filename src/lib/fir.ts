@@ -33,6 +33,8 @@ export type FirIssue = {
   completed_at?: string | null;
   closed_at?: string | null;
   vendor_completed_at?: string | null;
+  reject_reason?: string | null;
+  return_reason?: string | null;
   deleted?: boolean | null;
 };
 
@@ -46,4 +48,14 @@ export function firIsDone(rec: {
   if (/(^|_)(completed|complete|closed|resolved|done|verified|fixed)($|_)/.test(s))
     return true;
   return Boolean(rec.completed_at || rec.closed_at);
+}
+
+/** FIR issue was rejected / sent back — it should not count as an AC issue. */
+export function firIsRejected(rec: {
+  status?: string | null;
+  reject_reason?: string | null;
+}): boolean {
+  const s = String(rec.status ?? "").trim().toLowerCase();
+  if (/reject|declin|invalid|cancel/.test(s)) return true;
+  return Boolean(rec.reject_reason);
 }

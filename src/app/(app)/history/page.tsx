@@ -4,13 +4,17 @@ import { listFirHistory } from "@/lib/data";
 import { fmtDateTime } from "@/lib/format";
 import PageHeader from "@/components/PageHeader";
 import { Tag } from "@/components/StatusBadge";
+import RemoveHistory from "@/components/RemoveHistory";
 
 export const dynamic = "force-dynamic";
 
 export default async function HistoryPage() {
   const profile = await requireProfile();
+  const isAdmin = profile.role === "admin";
   const branch = profile.role === "branch_manager" ? profile.branch_code : null;
-  const history = await listFirHistory(branch);
+  const all = await listFirHistory(branch);
+  // Rejected FIR issues are not real AC issues — drop them from the log.
+  const history = all.filter((h) => !h.rejected_at);
 
   const resolved = history.filter((h) => h.resolved_at).length;
   const open = history.length - resolved;
@@ -44,12 +48,13 @@ export default async function HistoryPage() {
               <th>Reported</th>
               <th>Resolved</th>
               <th>Status</th>
+              {isAdmin && <th></th>}
             </tr>
           </thead>
           <tbody>
             {history.length === 0 && (
               <tr>
-                <td colSpan={6} style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>
+                <td colSpan={isAdmin ? 7 : 6} style={{ textAlign: "center", color: "var(--muted)", padding: 28 }}>
                   No FIR issues recorded yet.
                 </td>
               </tr>
@@ -94,6 +99,11 @@ export default async function HistoryPage() {
                       <Tag tone="amber">Open</Tag>
                     )}
                   </td>
+                  {isAdmin && (
+                    <td>
+                      <RemoveHistory firIssueId={h.fir_issue_id} />
+                    </td>
+                  )}
                 </tr>
               );
             })}

@@ -127,6 +127,7 @@ export type FirHistory = {
   room_no: string | null;
   asset_ids: string[] | null;
   resolved_at: string | null;
+  rejected_at: string | null;
   created_at: string;
 };
 

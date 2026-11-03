@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notify, branchInbox } from "@/lib/notify";
 import { revalidateAll } from "@/lib/revalidate";
-import { FIR_BRANCH, FIR_AC_DEPARTMENT, firIsDone, type FirIssue } from "@/lib/fir";
+import { FIR_BRANCH, FIR_AC_DEPARTMENT, firIsDone, firIsRejected, type FirIssue } from "@/lib/fir";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +62,7 @@ export async function POST(req: NextRequest) {
   const firNo = String(rec.fir_no ?? rec.id);
   const title = String(rec.title ?? "AC issue").slice(0, 300);
   const done = firIsDone(rec);
+  const rejected = firIsRejected(rec);
 
   const admin = supabaseAdmin();
 
@@ -73,6 +74,14 @@ export async function POST(req: NextRequest) {
   const isNew = !linkErr;
   if (linkErr && !(String(linkErr.code) === "23505" || /duplicate/i.test(linkErr.message))) {
     return NextResponse.json({ error: linkErr.message }, { status: 500 });
+  }
+
+  // Rejected in FIR → not a real AC issue. Mark the link rejected (drops it
+  // from History) and clear any issue flag we raised on the linked AC(s).
+  if (rejected) {
+    await rejectFir(admin, rec);
+    revalidateAll();
+    return NextResponse.json({ ok: true, branch: code, firNo, rejected: true });
   }
 
   // First sighting: match the AC(s), flag them, and raise the "issue" alert
@@ -134,9 +143,46 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, branch: code, firNo, new: isNew, done });
 }
 
+/** Mark a rejected FIR issue's link rejected and clear any flag we raised. */
+async function rejectFir(admin: Admin, rec: FirIssue) {
+  const { data: link } = await admin
+    .from("fir_links")
+    .select("asset_ids, rejected_at")
+    .eq("fir_issue_id", rec.id)
+    .maybeSingle();
+  if (link?.rejected_at) return; // already handled
+
+  const assetIds = ((link?.asset_ids ?? []) as string[]).filter(Boolean);
+  for (const id of assetIds) {
+    // Only clear the flag if it still points at this FIR issue.
+    const { data: a } = await admin
+      .from("assets")
+      .select("open_issue")
+      .eq("id", id)
+      .maybeSingle();
+    const open = (a?.open_issue as string | null) ?? "";
+    if (open.includes(String(rec.fir_no ?? rec.id))) {
+      await admin
+        .from("assets")
+        .update({ open_issue: null, under_repair: false, repair_started_at: null, repair_note: null })
+        .eq("id", id);
+      await admin.from("asset_events").insert({
+        asset_id: id,
+        kind: "issue_rejected",
+        description: `FIR issue ${rec.fir_no ?? rec.id} was rejected — cleared`,
+        actor_name: "FIR portal",
+      });
+    }
+  }
+
+  await admin
+    .from("fir_links")
+    .update({ rejected_at: new Date().toISOString() })
+    .eq("fir_issue_id", rec.id);
+}
+
 /** Auto-log a Repair for the AC(s) a resolved FIR issue was linked to. */
-async function resolveFir(
-  admin: Admin,
+async function resolveFir(  admin: Admin,
   rec: FirIssue,
   code: string,
   firNo: string,
