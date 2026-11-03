@@ -34,28 +34,42 @@ export default async function RoomsPage() {
       ? rooms.filter((r) => r.branch_code === profile.branch_code)
       : rooms;
 
-  // Match an AC to a room tolerantly: ignore case / surrounding spaces, and
-  // treat "02" / "2" and "503D" / "503 d" alike. Exact-but-differently-typed
-  // room strings were hiding ACs (DHA scheme, blocked-room spellings, etc.).
+  // Match an AC to a room tolerantly. Beyond case/space/leading-zero, DHA
+  // rooms are letter-coded (A1..D4) while the AC may hold the hotel number
+  // (101..404) — or vice-versa — so we bridge both directions there.
   const norm = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/\s+/g, "");
-  const numKey = (s: unknown) => {
-    const m = norm(s).match(/^0*(\d+)([a-z]?)$/);
-    return m ? m[1] + m[2] : null;
+  const roomKeys = (branch: string, s: unknown): Set<string> => {
+    const n = norm(s);
+    const keys = new Set<string>();
+    if (!n) return keys;
+    keys.add(n);
+    // Pure number with optional trailing letter: drop leading zeros ("02"->"2").
+    const num = n.match(/^0*(\d+)([a-z]?)$/);
+    if (num) keys.add(num[1] + num[2]);
+    if (branch === "DHA") {
+      // hotel number -> letter code: 101 -> a1, 209 -> b9
+      const toLetter = n.match(/^([1-4])0?([1-9])$/);
+      if (toLetter) keys.add("abcd"[Number(toLetter[1]) - 1] + toLetter[2]);
+      // letter code -> hotel number: a1 -> a1 (kept) and 101
+      const toNum = n.match(/^([a-d])0?([1-9])$/);
+      if (toNum) {
+        const floor = "abcd".indexOf(toNum[1]) + 1;
+        keys.add(`${floor}0${toNum[2]}`);
+        keys.add(`${floor}${toNum[2]}`);
+      }
+    }
+    return keys;
   };
-  const sameRoom = (a: unknown, b: unknown) => {
-    const na = norm(a);
-    const nb = norm(b);
-    if (!na || !nb) return false;
-    if (na === nb) return true;
-    const ka = numKey(a);
-    const kb = numKey(b);
-    return !!ka && ka === kb;
+  const sameRoom = (branch: string, a: unknown, b: unknown) => {
+    const ka = roomKeys(branch, a);
+    for (const k of roomKeys(branch, b)) if (ka.has(k)) return true;
+    return false;
   };
 
   const matched = new Set<string>();
   const find = (br: string, room: string, part: "I" | "E"): Asset | null => {
     const hit = assets.find(
-      (a) => a.current_branch === br && a.part === part && sameRoom(a.room, room)
+      (a) => a.current_branch === br && a.part === part && sameRoom(br, a.room, room)
     );
     if (hit) matched.add(hit.id);
     return hit ?? null;
