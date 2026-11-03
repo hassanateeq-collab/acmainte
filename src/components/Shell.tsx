@@ -156,6 +156,27 @@ export default function Shell({
           }}
         >
           <div className="brand-desktop">{brand}</div>
+          <a
+            href="https://fir-omega.vercel.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 6,
+              padding: "9px 12px",
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+              color: "var(--brand)",
+              background: "#eef6f4",
+              border: "1px solid var(--line)",
+            }}
+          >
+            Go to Corrective Maintenance ↗
+          </a>
           {navList}
           <div style={{ marginTop: "auto" }}>
             <div
