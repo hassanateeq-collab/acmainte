@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { notify, branchInbox } from "@/lib/notify";
 import { revalidateAll } from "@/lib/revalidate";
-import { FIR_BRANCH, FIR_AC_DEPARTMENT, firIsDone, firIsRejected, type FirIssue } from "@/lib/fir";
+import { FIR_BRANCH, FIR_AC_DEPARTMENT, firIsDone, firIsRejected, firMentionsAC, type FirIssue } from "@/lib/fir";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +53,13 @@ export async function POST(req: NextRequest) {
   // Only AC (HVAC) issues.
   if (String(rec.department_id ?? "") !== FIR_AC_DEPARTMENT) {
     return NextResponse.json({ ok: true, skipped: "not an AC issue" });
+  }
+
+  // The HVAC Technician department also covers heating/ventilation. Only act
+  // when the description actually mentions an AC — otherwise ignore entirely
+  // (no history row, no flag, no notification).
+  if (!firMentionsAC(rec)) {
+    return NextResponse.json({ ok: true, skipped: "HVAC issue without AC in description" });
   }
 
   const code = FIR_BRANCH[String(rec.branch_id ?? "")];

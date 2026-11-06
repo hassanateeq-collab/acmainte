@@ -18,6 +18,24 @@ export const FIR_BRANCH: Record<string, string> = {
 // portal.departments.id for "HVAC Technician" — i.e. an AC-related issue.
 export const FIR_AC_DEPARTMENT = "dcdbd9fb-8032-47e9-b226-df0900355615";
 
+/**
+ * The HVAC Technician department also covers heating/ventilation, so we only
+ * treat an issue as an AC issue when its title/description actually mentions an
+ * AC ("AC", "A/C", "air con(ditioner)", "aircon"). The room/area still comes
+ * from the FIR room_no/location — this gate is purely about the description.
+ */
+export function firMentionsAC(rec: { title?: string | null; description?: string | null }): boolean {
+  const text = `${rec.title ?? ""} ${rec.description ?? ""}`.toLowerCase();
+  return (
+    /\bac\b/.test(text) ||
+    /\ba\/?c\b/.test(text) ||
+    /\bacs\b/.test(text) ||
+    /air[\s-]?con/.test(text) ||
+    /air[\s-]?cool/.test(text) ||
+    /\bsplit\s*unit/.test(text)
+  );
+}
+
 /** The slice of a portal.issues row we care about (from the webhook payload). */
 export type FirIssue = {
   id: string;
